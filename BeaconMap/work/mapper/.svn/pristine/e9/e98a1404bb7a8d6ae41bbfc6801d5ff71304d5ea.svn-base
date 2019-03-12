@@ -1,0 +1,237 @@
+/* 
+ * Copyright 2018 University of Toronto
+ *
+ * Permission is hereby granted, to use this software and associated 
+ * documentation files (the "Software") in course work at the University 
+ * of Toronto, or for personal use. Other uses are prohibited, in 
+ * particular the distribution of the Software either publicly or to third 
+ * parties.
+ *
+ * The above copyright notice and this permission notice shall be included in 
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+#include "m1_header.h"
+
+// global data structure
+dataStructure data_structure;
+
+//Loads a map streets.bin file. Returns true if successful, false if some error
+//occurs and the map can't be loaded.
+bool load_map(std::string map_name/*map_path*/) {
+    
+   
+    
+    std::string map_path = "/cad2/ece297s/public/maps/toronto_canada.osm.bin";
+    boost::replace_all(map_path, "street", "osm");
+    if(!loadStreetsDatabaseBIN(map_name))
+        return false;
+    if(!loadOSMDatabaseBIN(map_path))
+        return false;
+    
+    data_structure.load();
+    return true;
+}
+
+//Close the map (if loaded)
+void close_map() {
+    closeOSMDatabase();
+    
+    closeStreetDatabase(); 
+    
+    data_structure.clear();
+
+}
+
+//Returns street id(s) for the given street name
+//If no street with this name exists, returns a 0-length vector.
+std::vector<unsigned> find_street_ids_from_name(std::string street_name){
+    return data_structure.nameTostreet [street_name];
+}
+
+
+//Returns the street segments for the given intersection 
+std::vector<unsigned> find_intersection_street_segments(unsigned intersection_id){  
+    return data_structure.INTSEG [intersection_id];
+}
+
+
+//Returns the street names at the given intersection (includes duplicate street 
+//names in returned vector)
+std::vector<std::string> find_intersection_street_names(unsigned intersection_id){
+    return data_structure.interTostreetName[intersection_id];
+}
+
+
+//Returns true if you can get from intersection1 to intersection2 using a single 
+//street segment
+//corner case: an intersection is considered to be connected to itself
+bool are_directly_connected(unsigned intersection_id1, unsigned intersection_id2){
+    std::vector<unsigned> seg_int1 = data_structure.INTSEG[intersection_id1];
+
+    StreetSegmentInfo seginfo_int1;
+    
+    for(unsigned i = 0; i < seg_int1.size(); i++){
+         seginfo_int1 = data_structure.streetsegmentinfo[seg_int1[i]];
+         if(((seginfo_int1.from == intersection_id1 )&&(seginfo_int1.to == intersection_id2)) || 
+            ((seginfo_int1.from == intersection_id2 )&&(!seginfo_int1.oneWay )&&(seginfo_int1.to == intersection_id1))){
+             return true;
+         } 
+    } 
+    if (intersection_id1 ==intersection_id2) return true; 
+    return false;
+}
+
+
+//Returns all intersections reachable by traveling down one street segment 
+//from given intersection (hint: you can't travel the wrong way on a 1-way street)
+//the returned vector should NOT contain duplicate intersections
+std::vector<unsigned> find_adjacent_intersections(unsigned intersection_id){
+    // get the number of total streetSegments
+    unsigned int NumSeg = getIntersectionStreetSegmentCount(intersection_id); 
+    
+    std::vector<unsigned> v; 
+    StreetSegmentIndex in;
+    
+    for (unsigned i =0; i < NumSeg; i++){
+        in = getIntersectionStreetSegment(intersection_id, i);
+        if (data_structure.streetsegmentinfo[in].from == intersection_id) {
+            if (data_structure.streetsegmentinfo[in].to != intersection_id) {
+               v.push_back(data_structure.streetsegmentinfo[in].to);
+                
+            }      
+        }
+        else if (data_structure.streetsegmentinfo[in].to == intersection_id && 
+                !data_structure.streetsegmentinfo[in].oneWay){
+            v.push_back(data_structure.streetsegmentinfo[in].from);
+        }
+        std::sort(v.begin(),v.end());
+        v.erase(std::unique(v.begin(),v.end()),v.end());
+    }
+    return v;
+    
+}
+
+
+//Returns all street segments for the given street
+std::vector<unsigned> find_street_street_segments(unsigned street_id){
+    return data_structure.segments[street_id];
+}
+
+
+//Returns all intersections along the a given street
+std::vector<unsigned> find_all_street_intersections(unsigned street_id){
+    return data_structure.intersections[street_id];
+}
+
+
+//Return all intersection ids for two intersecting streets
+std::vector<unsigned> find_intersection_ids_from_street_names
+                        (std::string street_name1, std::string street_name2){
+ 
+    std::vector<unsigned> common; 
+    std::vector<unsigned> vstreet1,vstreet2; 
+    std::vector <unsigned> vinter1,vinter2;
+    
+    vstreet1 = data_structure.nameTostreet[street_name1];                                                                   
+    vstreet2 = data_structure.nameTostreet[street_name2];
+    
+    for (unsigned i =0; i<vstreet1.size(); i++){
+        // the intersections for the first street
+         vinter1 = data_structure.intersections[vstreet1[i]]; 
+         
+        for (unsigned j = 0; j<vstreet2.size();j++){
+            // the intersections for the second street 
+            vinter2 =  data_structure.intersections[vstreet2[j]];
+            
+            // find the common intersections between 2 streets
+            std::set_intersection(vinter1.begin(),vinter1.end(),
+                    vinter2.begin(),vinter2.end(),std::back_inserter(common));  
+        }
+    }
+    return common;
+
+}
+
+
+//Returns the distance between two coordinates in meters
+double find_distance_between_two_points(LatLon point1, LatLon point2){
+    // change degree to radian
+    double lat_avg = DEG_TO_RAD * (point1.lat() + point2.lat())/2;
+    
+    // x = lon * cos(lat_avg)
+    double x1 = DEG_TO_RAD * point1.lon() * cos(lat_avg);
+    double x2 = DEG_TO_RAD * point2.lon() * cos(lat_avg);
+    // y = lat
+    double y1 = DEG_TO_RAD * point1.lat();
+    double y2 = DEG_TO_RAD * point2.lat();
+    
+    // d = R * sqrt((y1-y2)^2 + (x1-x2)^2)
+    return EARTH_RADIUS_IN_METERS * sqrt((y2-y1)*(y2-y1) + (x2-x1)*(x2-x1));
+}
+
+
+//Returns the length of the given street segment in meters
+double find_street_segment_length(unsigned street_segment_id){
+     return data_structure.street_segment_length[street_segment_id];
+    
+}
+
+
+//Returns the length of the specified street in meters
+double find_street_length(unsigned street_id){
+    double street_length = 0.0;
+
+    for(unsigned i=0; i < data_structure.segments[street_id].size(); i++){   
+            street_length +=  data_structure.
+                    street_segment_length[data_structure.segments[street_id][i]];  
+    }
+    return street_length;
+ 
+}
+
+//Returns the travel time to drive a street segment in seconds 
+//(time = distance/speed_limit)
+double find_street_segment_travel_time(unsigned street_segment_id){
+    return data_structure.segments_time[street_segment_id];
+}
+
+
+//Returns the nearest point of interest to the given position
+unsigned find_closest_point_of_interest(LatLon my_position){
+
+    double lat = my_position.lat() * DEG_TO_RAD;
+    double lon = my_position.lon() * DEG_TO_RAD;
+    
+    std::vector<r_value> closest;
+    data_structure.poi_rtree.query(
+            bgindex::nearest(r_point(EARTH_RADIUS_IN_METERS * std::cos(lat) * std::cos(lon),
+            EARTH_RADIUS_IN_METERS * std::cos(lat) * std::sin(lon),
+            EARTH_RADIUS_IN_METERS * std::sin(lat)), 1), std::back_inserter(closest));
+
+    return closest[0].second; //return poi_ID which is second in pair
+}
+
+
+//Returns the the nearest intersection to the given position
+unsigned find_closest_intersection(LatLon my_position){
+
+    double lat = my_position.lat() * DEG_TO_RAD;
+    double lon = my_position.lon() * DEG_TO_RAD;
+    
+    std::vector<r_value> closest;
+    data_structure.intersection_rtree.query(
+            bgindex::nearest(r_point(EARTH_RADIUS_IN_METERS * std::cos(lat) * std::cos(lon),
+            EARTH_RADIUS_IN_METERS * std::cos(lat) * std::sin(lon),
+            EARTH_RADIUS_IN_METERS * std::sin(lat)), 1), std::back_inserter(closest));
+
+    return closest[0].second; //return intersection_ID which is second in pair
+}

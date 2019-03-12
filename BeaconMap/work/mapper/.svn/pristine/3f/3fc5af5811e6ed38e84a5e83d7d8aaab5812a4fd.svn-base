@@ -1,0 +1,55 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+/* 
+ * File:   aNode.h
+ * Author: liuyixu6
+ *
+ * Created on March 19, 2018, 10:31 PM
+ */
+
+#ifndef ANODE_H
+#define ANODE_H
+
+#include <vector>
+#include "StreetsDatabaseAPI.h"
+#include "m1.h"
+#include <limits>
+
+struct aNode{
+    unsigned index; // POIIndex or IntersectionIndex
+    //LatLon coord;
+    //double x, y;
+    double F, G, H;
+    aNode* parentNode;
+    unsigned parentSegment;
+    
+    const double INF = std::numeric_limits<double>::infinity();
+    aNode(unsigned _index):index(_index), F(INF), G(INF), H(0), parentNode(NULL), parentSegment(0){
+        
+    }
+    aNode():index(0), F(INF), G(INF), H(0), parentNode(NULL), parentSegment(0){
+        
+    }
+    aNode& operator=(const aNode& other) // copy assignment
+    {
+        index = other.index;
+        F = other.F;
+        G = other.G;
+        H = other.H;
+        *parentNode = *(other.parentNode);
+        parentSegment = other.parentSegment;
+        
+        return *this;
+    }
+
+//    bool operator<(const aNode& temp) const{
+//    	return F < temp.F;
+//    }
+};
+
+#endif /* ANODE_H */
+

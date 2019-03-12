@@ -1,0 +1,179 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+/* 
+ * File:   m2_header.h
+ * Author: liuyixu6
+ *
+ * Created on February 23, 2018, 4:41 PM
+ */
+
+#ifndef M2_HEADER_H
+#define M2_HEADER_H
+
+
+#include <iostream>
+#include <chrono>
+#include <thread>
+#include <cstdlib>
+
+#include <string>
+#include <math.h>
+
+#include <vector>
+#include <algorithm>
+#include <unordered_map>
+#include <set>
+#include <map>
+
+#include "m2.h"
+#include "m3.h"
+#include "m1.h"
+#include "graphics.h"
+#include "dataStructure.h"
+#include "StreetsDatabaseAPI.h"
+#include "OSMDatabaseAPI.h"
+
+std::string output;//input in search bar
+std::string input;//output in result bar
+std::string from;
+std::string to;
+std::vector<std::string> auto_str_poi;
+std::vector<std::string> auto_str_intersection;
+
+bool mouse_move = false; 
+float x_coordinate, y_coordinate;
+bool if_draw_intersection = false;//flag control if draw intersection found in searching
+double avg_lat = 0; // average latitude
+bool thumbnail_draw = false;
+t_bound_box first_world;
+int select_auto_search = -1;
+int limit_of_auto_search = 0;
+unsigned click_1, click_2;
+
+t_bound_box search_bar;//bound box of search bar
+t_bound_box current_box;//bound box of current window
+t_bound_box result_bar;//bound box of result bar
+t_bound_box menu_button;
+t_bound_box menu;
+
+std::vector<unsigned> found_roads;
+
+bool click_intersection = false; //flag control if draw intersection when left clicking
+double x_click,y_click; 
+bool if_draw_pois = false;
+bool if_draw_subway = false;
+bool if_draw_attraction = false;
+bool if_draw_highway = false;
+bool if_menu = false;
+bool if_road_found = false;
+bool click_searching_1 = false;
+bool click_searching_2 = false;
+bool if_click_searching = false;
+
+// global data structure
+extern dataStructure data_structure;
+
+void drawscreen(void);
+void search_button(void (*drawscreen_ptr) (void));
+void act_on_button_press(float x, float y, t_event_buttonPressed event);
+void act_on_mouse_move(float x, float y);
+void act_on_key_press(char c, int keysym);
+void delay(long milliseconds);
+
+void act_on_mousebutton(float x, float y, t_event_buttonPressed button_info);
+unsigned close_inter (double lon, double lat);
+
+// display the thumbnail 
+void thumbnail();
+
+
+void input_calculation();
+
+// return street segment linewidth according to speedlimit
+int street_seg_linewidth(float speedlimit);
+
+// draw street segments and their name according to intersection nodes
+void draw_street();
+// helper function for draw_street
+void draw_street_segment(LatLon& point1, LatLon& point2, float speed, unsigned i);
+// draw street segment name
+void draw_street_name();
+
+// draw features such as buildings and lakes
+void draw_feature();
+
+bool if_in_box(t_bound_box & bb, double x, double y );
+
+
+// draw osm features with osm database
+// it includes draw_relation, draw_way, draw_node
+void draw_osm();
+
+// traverse OSMRelation, draw subway
+void draw_relation();
+// traverse OSMWay, draw highway
+void draw_way();
+// traverse OSMNode, draw tourism points
+void draw_node();
+
+
+// draw subway routes with different colors, and mark all stations
+void draw_osm_subway_and_station(const OSMWay* w, color_types color);
+
+// draw subway lines with color and two points specified
+void draw_subway_line(LatLon& point1, LatLon& point2, color_types color);
+
+// draw highway with particular color
+// road is drawn as orange color outside and yellow color inside
+void draw_osm_highway(const OSMWay* w);
+
+// draw highway lines with two points specified
+void draw_highway_line(LatLon& point1, LatLon& point2);
+
+// draw subway station with station name, icon is within function
+void draw_subway_station(LatLon& point, std::string name);
+
+// draw tourism point, icon is within function
+void draw_tourism_point(LatLon& point);
+
+void draw_found_road(std::vector<unsigned> & seg);
+
+
+
+// whether user clicks button
+bool if_draw_osm = false;
+// if osm button is pressed, then set if_draw_osm to false
+void osm_button(void (*drawscreen_ptr) (void));
+
+// whether user clicks button
+bool if_search = false;
+// if searchbar_button is pressed, then set if_search to false
+void searchbar_button(void (*drawscreen_ptr) (void));
+
+//function control the on and off of highways
+void highway_button(void (*drawscreen_ptr) (void));
+
+//function control the on and off of attractions
+void attraction_button(void (*drawscreen_ptr) (void));
+
+//function control the on and off of subways
+void subway_button(void (*drawscreen_ptr) (void));
+
+void set_from(void (*drawscreen_ptr) (void));
+
+void set_to(void (*drawscreen_ptr) (void));
+
+void navigate(void (*drawscreen_ptr) (void));
+
+void click_searching(void (*drawscreen_ptr) (void));
+
+void auto_poi_search(std::string & str);
+
+void click_search_calc();
+
+#endif /* M2_HEADER_H */
+

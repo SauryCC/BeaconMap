@@ -1,0 +1,122 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+/* 
+ * File:   dataStructure.h
+ * Author: liuyixu6
+ *
+ * Created on February 25, 2018, 12:27 AM
+ */
+
+#ifndef DATASTRUCTURE_H
+#define DATASTRUCTURE_H
+
+#include "StreetsDatabaseAPI.h"
+#include "OSMDatabaseAPI.h"
+#include <vector>
+#include <unordered_map>
+#include "graphics_types.h"
+
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/point.hpp>
+#include <boost/geometry/geometries/box.hpp>
+#include <boost/geometry/index/rtree.hpp>
+
+namespace bg = boost::geometry;
+namespace bgindex = boost::geometry::index;
+
+//point type as (x,y,z)
+typedef bg::model::point<double, 3, bg::cs::cartesian> r_point; 
+
+//pair of r_point and its ID
+typedef std::pair<r_point, unsigned> r_value;
+
+
+
+class dataStructure{
+public:
+    
+    dataStructure();
+    virtual ~dataStructure();
+    
+    void load(); // function to load data structure
+    
+    void clear(); // function to clear data structure
+    
+    /************   data structure for M1     ************/
+    
+    std::unordered_map<unsigned,std::vector<unsigned> > segments;
+    // the unordered map that street is key and the list of its segments as value
+
+    std::unordered_map<unsigned,std::vector<unsigned> > intersections;
+    // the unordered map that street is key and the list of its intersections as value
+
+    std::unordered_map <unsigned, std::string> streetToname; 
+    // the map has street ids as key and its name as value
+
+    std::unordered_map<std::string,std::vector<unsigned> > nameTostreet; 
+    //  the unordered map has name as key and street id as value (might has duplicate id )
+
+    std::unordered_map<unsigned,std::vector<std::string> > interTostreetName;
+    // the unordered map that key is intersection id, and value is street names at this intersection
+
+    std::vector<StreetSegmentInfo> streetsegmentinfo;
+    // vector for street segment information
+
+    std::vector<std::vector<unsigned> > INTSEG;
+    // vector for intersection id -> according street segment
+
+    std::vector<double> street_segment_length; 
+    // vector stores length of each segments
+
+    std::vector<double> segments_time;
+    // vector stores each street segment travel time
+    
+    bgindex::rtree< r_value, bgindex::linear<32> > intersection_rtree; 
+    //r-tree for intersections
+    
+    bgindex::rtree< r_value, bgindex::linear<32> > poi_rtree; 
+    //r-tree for storing point of interest
+    
+    /************   data structure for M2     ************/
+    
+    // store osmid
+    std::unordered_map <OSMID, const OSMNode*> nodes;
+    // unordered-map stores OSMNode
+    
+    std::unordered_map <OSMID, const OSMWay*> ways;
+    // unordered-map stores OSMWay
+    
+    
+    std::vector<LatLon> intersection;
+    // vector stores intersection point Latitude and Longitude
+
+    std::vector<unsigned> ids_of_intersections;
+    // vector stores intersection ids
+    
+    std::vector<std::string> POItype;
+    // vector stores point of interest type name
+    
+    // data for thumbnail
+    std::vector<std::vector<t_point> > dims_features;
+    // vector stores numbers of feature and feature points
+    
+    std::unordered_map <std::string, std::vector<unsigned> > nameToPOI; 
+    // unordered-map stores poi name and corresponding poi ids
+    
+    std::vector<unsigned> id_of_poi;
+    // vector stores poi ids
+
+    std::vector<char> input_string;
+    // vector stores a string of input
+    
+    std::unordered_map<std::string,std::vector<unsigned> > intername_interid;
+};
+
+
+
+#endif /* DATASTRUCTURE_H */
+

@@ -1,0 +1,93 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+/* 
+ * File:   astar.h
+ * Author: liuyixu6
+ *
+ * Created on March 17, 2018, 3:50 PM
+ */
+
+#ifndef ASTAR_H
+#define ASTAR_H
+
+#include <vector>
+#include <list>// change to heap
+#include "StreetsDatabaseAPI.h"
+#include "m1.h"
+
+
+
+struct aNode{
+    unsigned index; // POIIndex or IntersectionIndex
+    //LatLon coord;
+    //double x, y;
+    double F, G, H;
+    aNode* parentNode;
+    unsigned parentSegment;
+    aNode(unsigned _index):index(_index), F(0), G(0), H(0), parentNode(NULL), parentSegment(0){
+        
+    }
+    aNode():index(0), F(0), G(0), H(0), parentNode(NULL), parentSegment(0){
+        
+    }
+    aNode& operator=(const aNode& other) // copy assignment
+    {
+        index = other.index;
+        F = other.F;
+        G = other.G;
+        H = other.H;
+        *parentNode = *(other.parentNode);
+        parentSegment = other.parentSegment;
+        
+        return *this;
+    }
+};
+
+class astar{
+public:
+    void init_astar(std::vector<aNode*> &_map);
+    std::vector<unsigned> get_path(aNode &start, aNode &end, double turn_penalty);
+    
+    ~astar(){
+        for (std::list<aNode*>::iterator it=openset.begin(); it != openset.end(); ++it){
+            delete *it;
+        }
+        openset.clear();
+        
+        for (std::list<aNode*>::iterator it=closeset.begin(); it != closeset.end(); ++it){
+            delete *it;
+        }
+        closeset.clear();
+    }
+
+    
+    
+
+    
+private:
+    
+    aNode* find_path(aNode &start, aNode &end, double turn_penalty);
+    std::vector<unsigned> get_surround_segments(const aNode* curr) const;
+
+    aNode* is_in_list(const std::list<aNode*> &list, const aNode& temp); // whether aNode is in closed/open set
+    aNode* get_smallest_F_value_node_from_openset();
+    
+    double calcG(aNode* curr, aNode* temp, double turn_penalty);
+    double calcH(aNode* temp, aNode* end);
+    double calcF(aNode* temp);
+    
+    
+
+private:
+    std::vector<aNode*> map;
+    std::list<aNode*> openset; // change to binary heap
+    std::list<aNode*> closeset;
+    
+};
+
+#endif /* ASTAR_H */
+

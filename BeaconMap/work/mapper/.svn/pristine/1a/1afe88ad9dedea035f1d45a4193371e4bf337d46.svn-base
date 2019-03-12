@@ -1,0 +1,323 @@
+/* 
+ * Copyright 2018 University of Toronto
+ *
+ * Permission is hereby granted, to use this software and associated 
+ * documentation files (the "Software") in course work at the University 
+ * of Toronto, or for personal use. Other uses are prohibited, in 
+ * particular the distribution of the Software either publicly or to third 
+ * parties.
+ *
+ * The above copyright notice and this permission notice shall be included in 
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+#include "m1.h"
+#include "StreetsDatabaseAPI.h"
+#include <algorithm>
+#include <set>
+
+
+class treenode{
+public:
+    unsigned ID;
+    bool ifintersection;
+    treenode* NW;
+    treenode* NE;
+    treenode* SW;
+    treenode* SE;
+    
+    treenode(unsigned id, bool ifint);
+    ~treenode();
+    void insert(treenode TN);
+    
+};
+
+
+
+treenode::treenode(unsigned id, bool ifint){
+    ID = id;
+    ifintersection = ifint;
+    treenode* NW = NULL;
+    treenode* NE = NULL;
+    treenode* SW = NULL;
+    treenode* SE = NULL;
+}
+
+treenode::~treenode(){
+    
+}
+
+void treenode::insert(treenode TN){
+    
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+bool load_map(std::string map_name/*map_path*/) {
+    bool load_successful = false; //Indicates whether the map has loaded 
+                                  //successfully
+
+    load_successful = loadStreetsDatabaseBIN(map_name);
+    
+    
+    
+    //Load your map related data structures here
+    //
+
+  //  load_successful = true; //Make sure this is updated to reflect whether
+                            //loading the map succeeded or failed
+
+    return load_successful;
+}
+
+void close_map() {
+    closeStreetDatabase(); 
+    //Clean-up your map related data structures here
+    
+}
+
+std::vector<unsigned> find_street_ids_from_name(std::string street_name){
+    
+    std::string tstreetname;
+    std::vector<unsigned> ans;
+
+    unsigned numofstreet = getNumberOfStreets();
+   
+    for(unsigned i = 0 ; i < numofstreet ; i++){
+        tstreetname = getStreetName(i);
+        if(tstreetname == street_name){
+           
+            ans.push_back(i);
+        }
+    }
+
+    return ans;
+   
+}
+
+std::vector<unsigned> find_intersection_street_segments(unsigned intersection_id){
+    
+    std::vector<unsigned> ans;
+    unsigned numofseg = getIntersectionStreetSegmentCount(intersection_id);
+    unsigned temp;
+    for(unsigned i = 0; i < numofseg; i ++){
+       temp = getIntersectionStreetSegment(intersection_id, i); 
+       ans.push_back(temp);
+    }
+    
+
+    
+    return ans;
+    
+}
+
+std::vector<std::string> find_intersection_street_names(unsigned intersection_id){
+    
+    
+    
+    
+    std::vector<unsigned> seg_vec;
+    unsigned numofseg = getIntersectionStreetSegmentCount(intersection_id);
+    unsigned temp;
+    for(unsigned i = 0; i < numofseg; i ++){
+       temp = getIntersectionStreetSegment(intersection_id, i); 
+       seg_vec.push_back(temp);
+    }
+    
+    
+    
+    StreetSegmentInfo temp_seg_info;
+    std::string temp_string;
+    
+    std::vector<std::string> ans;
+    
+    for(unsigned i = 0; i < seg_vec.size(); i++){
+        temp_seg_info = getStreetSegmentInfo(seg_vec[i]);
+        temp_string = getStreetName(temp_seg_info.streetID);
+        ans.push_back(temp_string);
+    }
+    
+    return ans;
+}
+
+
+bool are_directly_connected(unsigned intersection_id1, unsigned intersection_id2){
+    std::vector<unsigned> seg_int1 = find_intersection_street_segments(intersection_id1);
+
+    StreetSegmentInfo seginfo_int1;
+    
+    for(unsigned i = 0; i < seg_int1.size(); i++){
+         seginfo_int1 = getStreetSegmentInfo(seg_int1[i]);
+         if(seginfo_int1.from == intersection_id1 && seginfo_int1.to == intersection_id2 || seginfo_int1.from == intersection_id2 && !seginfo_int1.oneWay && seginfo_int1.to == intersection_id1){
+          
+                return true;
+            
+         }
+             
+    } 
+   
+    if(intersection_id1 == intersection_id2){
+        return true;
+    }
+    
+    return false;
+}
+
+
+
+std::vector<unsigned> find_adjacent_intersections(unsigned intersection_id){
+    unsigned  NumSeg = getIntersectionStreetSegmentCount(intersection_id); // get the number of total streetSegments
+
+    std::vector<unsigned> v;
+    
+    unsigned in;
+    StreetSegmentInfo tempStreetInfo;
+    bool flag = true;
+    
+    
+    for (unsigned i = 0; i < NumSeg; i++){
+        in = getIntersectionStreetSegment(intersection_id, i);
+        tempStreetInfo=getStreetSegmentInfo(in);
+        if (tempStreetInfo.from == intersection_id){
+            if (tempStreetInfo.to !=intersection_id ){
+                
+                for(unsigned i = 0; i < v.size(); i++){
+                    
+                    if (v[i] == tempStreetInfo.to ){
+                        flag = false;
+                    }
+                    
+                }
+                
+                if(flag){
+     
+                    v.push_back(tempStreetInfo.to);
+                }
+                
+            }
+                
+        }
+        else {
+          
+            for(unsigned i = 0; i < v.size(); i++){
+                    
+                    if (v[i] == tempStreetInfo.from ){
+                        flag = false;
+                    }
+                    
+            }
+            
+            if(tempStreetInfo.oneWay){
+                flag = false;
+            }
+            if(flag){
+                    v.push_back(tempStreetInfo.from);
+            }      
+            
+        }
+        
+        flag = true;
+        
+    }
+    
+    return v;
+    
+}
+std::vector<unsigned> find_street_street_segments(unsigned street_id){
+    std::vector<unsigned> v; 
+    
+    unsigned NumSeg = getNumberOfStreetSegments();
+    StreetSegmentInfo temp; 
+    for (unsigned i = 0; i < NumSeg; i ++){
+       temp = getStreetSegmentInfo(i);
+       if (temp.streetID == street_id){
+           v.push_back(i);
+       }
+    }
+    return v;
+
+}
+
+std::vector<unsigned> find_all_street_intersections(unsigned street_id){
+    std::vector<unsigned> v;
+    std::vector<unsigned> common,difference;
+    unsigned NumSeg = getNumberOfStreetSegments();
+    StreetSegmentInfo temp;
+    
+    
+    
+    for (unsigned i = 0; i < NumSeg; i ++){
+       temp= getStreetSegmentInfo(i);
+       
+       if (temp.streetID == street_id) {
+           
+           v.push_back(temp.to);
+           v.push_back(temp.from);
+     
+           
+       }
+     
+    }
+    
+    
+
+    std::set<unsigned> s(v.begin(),v.end());
+    v.assign(s.begin(),s.end());
+  
+   
+   
+   return v;
+}
+
+
+std::vector<unsigned> find_intersection_ids_from_street_names(std::string street_name1, 
+                                                              std::string street_name2){
+  /*  std::vector<unsigned> common; 
+    std::vector<unsigned> vstreet1,vstreet2; 
+    vstreet1 =find_all_street_intersections( find_street_ids_from_name(street_name1));                                                                                     
+    vstreet2 =find_all_street_intersections( find_street_ids_from_name(street_name2));
+    std::set_intersection(vstreet1.begin(),vstreet1.end(),vstreet1.begin(),vstreet1.end(),std::back_inserter(common));    
+*/}
+
+double find_distance_between_two_points(LatLon point1, LatLon point2){
+    
+}
+
+double find_street_segment_length(unsigned street_segment_id){
+    
+}
+
+double find_street_length(unsigned street_id){
+    
+}
+
+double find_street_segment_travel_time(unsigned street_segment_id){
+    
+}
+
+unsigned find_closest_point_of_interest(LatLon my_position){
+    
+}
+
+unsigned find_closest_intersection(LatLon my_position){
+    
+}

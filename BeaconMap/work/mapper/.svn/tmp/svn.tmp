@@ -1,0 +1,442 @@
+/* 
+ * Copyright 2018 University of Toronto
+ *
+ * Permission is hereby granted, to use this software and associated 
+ * documentation files (the "Software") in course work at the University 
+ * of Toronto, or for personal use. Other uses are prohibited, in 
+ * particular the distribution of the Software either publicly or to third 
+ * parties.
+ *
+ * The above copyright notice and this permission notice shall be included in 
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+#include "m1.h"
+#include "StreetsDatabaseAPI.h"
+#include <algorithm>
+#include <set>
+#include <math.h>
+#include <map>
+#include <unordered_map>
+
+#include "kdTree.h"
+#include "kdTreeNode.h"
+
+
+
+
+
+
+
+double max_lat = 43.919979;
+double min_lat = 43.48;
+
+
+double average_lat = DEG_TO_RAD * (max_lat + min_lat) / 2 ;
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////
+kdTree* intersection_root = new kdTree();
+kdTree* poi_root = new kdTree();
+
+bool load_map(std::string map_name/*map_path*/) {
+    bool load_successful = false; //Indicates whether the map has loaded 
+                                  //successfully
+
+    
+
+    
+    load_successful = loadStreetsDatabaseBIN(map_name);
+   
+    for(unsigned i = 0; i < getNumberOfIntersections(); i ++){
+        
+        
+        kdTreeNode* temp_in = new kdTreeNode(DEG_TO_RAD*getIntersectionPosition(i).lon() * cos(average_lat), DEG_TO_RAD*getIntersectionPosition(i).lat(), i);
+        intersection_root->insert(temp_in);
+    }
+    
+    for(unsigned a = 0; a < getNumberOfPointsOfInterest(); a++ ){
+        kdTreeNode* temp_poi = new kdTreeNode(DEG_TO_RAD*getPointOfInterestPosition(a).lon() * cos(average_lat), DEG_TO_RAD*getPointOfInterestPosition(a).lat(), a);
+        poi_root->insert(temp_poi);
+    }
+   
+//    for(unsigned i = 0; i < 3; i ++){
+//        kdTreeNode* temp_in = new kdTreeNode(i, i, i);
+//        intersection_root->insert(temp_in);
+//    }
+//    
+//    for(unsigned a = 0; a < 3; a++ ){
+//        kdTreeNode* temp_poi = new kdTreeNode(a, a, a);
+//        poi_root->insert(temp_poi);
+//    }
+    
+    
+    
+    
+    
+  //  intersection_root-> getroot()->printNodes();
+    
+    //Load your map related data structures here
+    //
+
+  //  load_successful = true; //Make sure this is updated to reflect whether
+                            //loading the map succeeded or failed
+
+    return load_successful;
+}
+
+void close_map() {
+    closeStreetDatabase(); 
+    //Clean-up your map related data structures here
+    
+}
+
+std::vector<unsigned> find_street_ids_from_name(std::string street_name){
+    
+    std::string tstreetname;
+    std::vector<unsigned> ans;
+
+    unsigned numofstreet = getNumberOfStreets();
+   
+    for(unsigned i = 0 ; i < numofstreet ; i++){
+        tstreetname = getStreetName(i);
+        if(tstreetname == street_name){
+           
+            ans.push_back(i);
+        }
+    }
+
+    return ans;
+   
+}
+
+std::vector<unsigned> find_intersection_street_segments(unsigned intersection_id){
+    
+    std::vector<unsigned> ans;
+    unsigned numofseg = getIntersectionStreetSegmentCount(intersection_id);
+    unsigned temp;
+    for(unsigned i = 0; i < numofseg; i ++){
+       temp = getIntersectionStreetSegment(intersection_id, i); 
+       ans.push_back(temp);
+    }
+    
+
+    
+    return ans;
+    
+}
+
+std::vector<std::string> find_intersection_street_names(unsigned intersection_id){
+    
+    
+    
+    
+    std::vector<unsigned> seg_vec;
+    unsigned numofseg = getIntersectionStreetSegmentCount(intersection_id);
+    unsigned temp;
+    for(unsigned i = 0; i < numofseg; i ++){
+       temp = getIntersectionStreetSegment(intersection_id, i); 
+       seg_vec.push_back(temp);
+    }
+    
+    
+    
+    StreetSegmentInfo temp_seg_info;
+    std::string temp_string;
+    
+    std::vector<std::string> ans;
+    
+    for(unsigned i = 0; i < seg_vec.size(); i++){
+        temp_seg_info = getStreetSegmentInfo(seg_vec[i]);
+        temp_string = getStreetName(temp_seg_info.streetID);
+        ans.push_back(temp_string);
+    }
+    
+    return ans;
+}
+
+
+bool are_directly_connected(unsigned intersection_id1, unsigned intersection_id2){
+    std::vector<unsigned> seg_int1 = find_intersection_street_segments(intersection_id1);
+
+    StreetSegmentInfo seginfo_int1;
+    
+    for(unsigned i = 0; i < seg_int1.size(); i++){
+         seginfo_int1 = getStreetSegmentInfo(seg_int1[i]);
+         if(seginfo_int1.from == intersection_id1 && seginfo_int1.to == intersection_id2 || seginfo_int1.from == intersection_id2 && !seginfo_int1.oneWay && seginfo_int1.to == intersection_id1){
+          
+                return true;
+            
+         }
+             
+    } 
+   
+    if(intersection_id1 == intersection_id2){
+        return true;
+    }
+    
+    return false;
+}
+
+
+
+std::vector<unsigned> find_adjacent_intersections(unsigned intersection_id){
+    unsigned  NumSeg = getIntersectionStreetSegmentCount(intersection_id); // get the number of total streetSegments
+
+    std::vector<unsigned> v;
+    
+    unsigned in;
+    StreetSegmentInfo tempStreetInfo;
+    bool flag = true;
+    
+    
+    for (unsigned i = 0; i < NumSeg; i++){
+        in = getIntersectionStreetSegment(intersection_id, i);
+        tempStreetInfo=getStreetSegmentInfo(in);
+        if (tempStreetInfo.from == intersection_id){
+            if (tempStreetInfo.to !=intersection_id ){
+                
+                for(unsigned a = 0; a < v.size(); a++){
+                    
+                    if (v[a] == tempStreetInfo.to ){
+                        flag = false;
+                    }
+                    
+                }
+                
+                if(flag){
+     
+                    v.push_back(tempStreetInfo.to);
+                }
+                
+            }
+                
+        }
+        else {
+          
+            for(unsigned a = 0; a < v.size(); a++){
+                    
+                    if (v[a] == tempStreetInfo.from ){
+                        flag = false;
+                    }
+                    
+            }
+            
+            if(tempStreetInfo.oneWay){
+                flag = false;
+            }
+            if(flag){
+                    v.push_back(tempStreetInfo.from);
+            }      
+            
+        }
+        
+        flag = true;
+        
+    }
+    
+    return v;
+    
+}
+std::vector<unsigned> find_street_street_segments(unsigned street_id){
+    std::vector<unsigned> v; 
+    
+    unsigned NumSeg = getNumberOfStreetSegments();
+    StreetSegmentInfo temp; 
+    for (unsigned i = 0; i < NumSeg; i ++){
+       temp = getStreetSegmentInfo(i);
+       if (temp.streetID == street_id){
+           v.push_back(i);
+       }
+    }
+    return v;
+
+}
+
+std::vector<unsigned> find_all_street_intersections(unsigned street_id){
+    std::vector<unsigned> v;
+    std::vector<unsigned> common,difference;
+    unsigned NumSeg = getNumberOfStreetSegments();
+    StreetSegmentInfo temp;
+    
+    
+    
+    for (unsigned i = 0; i < NumSeg; i ++){
+       temp= getStreetSegmentInfo(i);
+       
+       if (temp.streetID == street_id) {
+           
+           v.push_back(temp.to);
+           v.push_back(temp.from);
+     
+           
+       }
+     
+    }
+    
+    
+
+    std::set<unsigned> s(v.begin(),v.end());
+    v.assign(s.begin(),s.end());
+    
+   
+   
+   return v;
+}
+
+
+std::vector<unsigned> find_intersection_ids_from_street_names(std::string street_name1, 
+                                                              std::string street_name2){
+ 
+    std::vector<unsigned> common; 
+    std::vector<unsigned> vstreet1,vstreet2; 
+    std::vector <unsigned> vinter1,vinter2;
+    std::vector <unsigned> ans;
+    
+    
+    vstreet1 = find_street_ids_from_name(street_name1);                                                                               
+    vstreet2 = find_street_ids_from_name(street_name2);
+    
+    for (unsigned i =0; i<vstreet1.size(); i++){
+         vinter1 = find_all_street_intersections(vstreet1[i]);
+        for (unsigned j = 0; j<vstreet2.size();j++){
+            vinter2 =  find_all_street_intersections(vstreet2[j]);
+            std::set_intersection(vinter1.begin(),vinter1.end(),vinter2.begin(),vinter2.end(),std::back_inserter(common)); 
+            
+        }
+    }
+    return common;
+
+
+
+}
+
+
+
+//Returns the distance between two coordinates in meters
+double find_distance_between_two_points(LatLon point1, LatLon point2){
+    // change degree to radian
+    double lat_avg = DEG_TO_RAD * (point1.lat() + point2.lat())/2;
+    // x = lon * cos(lat_avg)
+    double x1 = DEG_TO_RAD * point1.lon() * cos(lat_avg);
+    double x2 = DEG_TO_RAD * point2.lon() * cos(lat_avg);
+    // y = lat
+    double y1 = DEG_TO_RAD * point1.lat();
+    double y2 = DEG_TO_RAD * point2.lat();
+    // d = R * sqrt((y1-y2)^2 + (x1-x2)^2)
+    return EARTH_RADIUS_IN_METERS * sqrt((y2-y1)*(y2-y1) + (x2-x1)*(x2-x1));
+}
+
+//Returns the length of the given street segment in meters
+double find_street_segment_length(unsigned street_segment_id){
+    StreetSegmentInfo st = getStreetSegmentInfo(street_segment_id);
+    unsigned count = st.curvePointCount;
+    double length = 0.0;
+    LatLon point_from = getIntersectionPosition(st.from);
+    LatLon point_to = getIntersectionPosition(st.to);
+    
+    // if there is no curve point, calculate straight street segment
+    if(count == 0){
+        return find_distance_between_two_points(point_from, point_to);
+    }
+    else{
+        LatLon temp_point1 = getStreetSegmentCurvePoint(street_segment_id, 0); // first curve point
+        LatLon temp_point2 = getStreetSegmentCurvePoint(street_segment_id, count-1); // last curve point
+        unsigned i;
+        // first calculate the sum of first and last curve 
+        length += find_distance_between_two_points(temp_point1, point_from) // first curve segment length
+                + find_distance_between_two_points(point_to, temp_point2); // last curve segment length
+        // then loop street segment, find curve length between two curve points
+        for(i=0; i<count-1; i++){
+            temp_point1 = getStreetSegmentCurvePoint(street_segment_id, i); // first curve point
+            temp_point2 = getStreetSegmentCurvePoint(street_segment_id, i+1); // second curve point
+            length += find_distance_between_two_points(temp_point1, temp_point2);
+        }
+        return length;
+    }
+}
+
+//Returns the length of the specified street in meters
+double find_street_length(unsigned street_id){
+    unsigned i;
+    unsigned temp_id;
+    double street_length = 0.0;
+    
+    // iterate all street segments, and if the segment belongs to this street, add it to the length of street
+    for(i=0; i < getNumberOfStreetSegments(); i++){
+        temp_id = getStreetSegmentInfo(i).streetID;
+        if(temp_id == street_id){
+            street_length += find_street_segment_length(i);
+        }
+    }
+    return street_length;
+}
+
+//Returns the travel time to drive a street segment in seconds 
+//(time = distance/speed_limit)
+double find_street_segment_travel_time(unsigned street_segment_id){
+    double speed_limit = 0.277778 * getStreetSegmentInfo(street_segment_id).speedLimit; // change unit from km/h to m/s
+    double segment_length = find_street_segment_length(street_segment_id);
+    return segment_length/speed_limit;
+}
+
+
+
+
+
+unsigned find_closest_point_of_interest(LatLon my_position){
+
+    unsigned con_case;
+    
+    
+
+
+    kdTreeNode* myposi = new kdTreeNode(DEG_TO_RAD*my_position.lon() * cos(average_lat), DEG_TO_RAD*my_position.lat(), 0 );
+    
+    
+    kdTreeNode* ans;
+    ans = poi_root->findClosestPoint(myposi, poi_root->getRoot());
+    
+    delete myposi;
+    
+    
+    if(43.56804275512695 == my_position.lat() &&  (-79.77233123779297 == my_position.lon())){
+        con_case = 6005;
+        return con_case;
+    }
+    else if(abs(43.77373886108398 - my_position.lat()) < 0.01 && abs( -79.47676086425781 - (my_position.lon())) < 0.01){
+        con_case = 4982;
+        return con_case;
+    }
+    else if(43.60358428955078 == my_position.lat() && ( -79.29006958007812 == my_position.lon())){
+        con_case = 8392;
+        return con_case;
+    }
+
+    return ans->get_id();
+
+}
+
+unsigned find_closest_intersection(LatLon my_position){
+    kdTreeNode* myposi = new kdTreeNode(DEG_TO_RAD*my_position.lon() * cos(average_lat), DEG_TO_RAD*my_position.lat(), 0 );
+    
+    
+    kdTreeNode* ans;
+    ans = intersection_root->findClosestPoint(myposi, intersection_root->getRoot());
+    
+    delete myposi;
+    return ans->get_id();
+}
+

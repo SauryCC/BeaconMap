@@ -1,0 +1,172 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+#include "m1.h"
+#include "StreetsDatabaseAPI.h"
+#include <set>
+#include <map>
+#include <unordered_map>
+#include <algorithm>
+#include <math.h>
+
+#include "m2.h"
+#include <iostream>
+#include <chrono>
+#include <thread>
+#include <cstdlib>
+#include <vector>
+#include <string>
+#include "graphics.h"
+
+// You can use any coordinate system you want.
+// The coordinate system below matches what you have probably seen in math 
+// (ie. with origin in bottom left).
+// Note, that text orientation is not affected. Zero degrees will always be the normal, readable, orientation.
+//const t_bound_box initial_coords = t_bound_box(0, 0, 1000, 1000);
+void drawscreen(void);
+int street_seg_linewidth(float speedlimit);
+
+struct intersection_data{
+    LatLon position;
+    std::string name;
+};
+
+std::vector<intersection_data> intersec;
+double avg_lat;
+
+void draw_map(){
+    
+    double max_lat = getIntersectionPosition(0).lat();
+    double min_lat = max_lat;
+    double max_lon = getIntersectionPosition(0).lon();
+    double min_lon = max_lon;
+    
+    intersec.resize(getNumberOfIntersections());
+    for(unsigned id=0; id<getNumberOfIntersections(); id++){
+        intersec[id].position = getIntersectionPosition(id);
+        intersec[id].name = getIntersectionName(id);
+        
+        max_lat = std::max(max_lat, intersec[id].position.lat());
+        min_lat = std::min(min_lat, intersec[id].position.lat());
+        
+        max_lon = std::max(max_lon, intersec[id].position.lon());
+        min_lon = std::min(min_lon, intersec[id].position.lon());
+    }
+    avg_lat = 0.5*(max_lat + min_lat);
+    
+    // Set the name of the window (in UTF-8), with white background.
+    init_graphics("Some Example Graphics", WHITE); // you could pass a t_color RGB triplet instead
+
+    // We'll first do double buffered drawing, where we draw to an off-screen
+    // buffer and then quickly copy it to the screen to avoid flashes as we 
+    // rapidly change the graphics when panning or zooming
+    set_drawing_buffer(OFF_SCREEN);
+
+    // Set-up coordinates. The coordinates passed in define what coordinate
+    // limits you want to use; this coordinate system is mapped to fill 
+    // the screen.
+    set_visible_world(min_lon*std::cos(avg_lat), min_lat,
+                      max_lon*std::cos(avg_lat), max_lat);
+
+    // Set the message at the bottom (also UTF-8)
+    update_message("Street segment");
+
+    event_loop(NULL, NULL, NULL, drawscreen);
+    
+    //t_bound_box old_coords = get_visible_world(); // save the current view for later;
+    
+    close_graphics();
+}
+
+void drawscreen(void) {
+
+    /* The redrawing routine for still pictures.  The graphics package calls  
+     * this routine to do redrawing after the user changes the window 
+     * in any way.                                                    
+     */
+
+    set_draw_mode(DRAW_NORMAL); // Should set this if your program does any XOR drawing in callbacks.
+    clearscreen(); /* Should precede drawing for all drawscreens */
+
+//    setfontsize(10);
+    setlinestyle(SOLID);
+    setlinewidth(2);
+    setcolor(BLACK);
+
+    for(unsigned i=0; i<getNumberOfStreetSegments(); i++){
+        LatLon point1 = getIntersectionPosition(getStreetSegmentInfo(i).from);
+        LatLon point2 = getIntersectionPosition(getStreetSegmentInfo(i).to);
+        float speed = getStreetSegmentInfo(i).speedLimit;
+        setlinewidth(street_seg_linewidth(speed));
+        
+        // x = lon * cos(lat_avg)
+        double x1 = point1.lon() * cos(avg_lat);
+        double x2 = point2.lon() * cos(avg_lat);
+        // y = lat
+        double y1 = point1.lat();
+        double y2 = point2.lat();
+        
+        if(getStreetSegmentInfo(i).curvePointCount == 0){
+            drawline(x1, y1, x2, y2);
+        }
+        else{
+            LatLon temp_point1 = getStreetSegmentCurvePoint(i, 0); // first curve point
+            LatLon temp_point2 = getStreetSegmentCurvePoint(i, getStreetSegmentInfo(i).curvePointCount-1); // last curve point
+            // first draw first and last curve 
+            double temp_x1 = temp_point1.lon() * cos(avg_lat);
+            double temp_x2 = temp_point2.lon() * cos(avg_lat);
+            
+            double temp_y1 = temp_point1.lat();
+            double temp_y2 = temp_point2.lat();
+            
+            drawline(x1, y1, temp_x1, temp_y1);
+            drawline(temp_x2, temp_y2, x2, y2);
+            
+            // then loop street segment, find curve length between two curve points
+            for(unsigned a=0; a<getStreetSegmentInfo(i).curvePointCount-1; a++){
+                temp_point1 = getStreetSegmentCurvePoint(i, a); // first curve point
+                temp_point2 = getStreetSegmentCurvePoint(i, a+1); // second curve point
+                
+                temp_x1 = temp_point1.lon() * cos(avg_lat);
+                temp_x2 = temp_point2.lon() * cos(avg_lat);
+
+                temp_y1 = temp_point1.lat();
+                temp_y2 = temp_point2.lat();
+                
+                drawline(temp_x1, temp_y1, temp_x2, temp_y2);
+            }
+            
+<<<<<<< .mine
+         }
+=======
+        }
+        
+    }
+    
+    // Need to copy the off screen buffer to screen if we're using double buffering.
+    // Harmless to call this if we're not using double-buffering.
+>>>>>>> .r19
+    copy_off_screen_buffer_to_screen();
+
+}
+
+int street_seg_linewidth(float speedlimit){
+    if(speedlimit < 30){
+        return 1;
+    }
+    else if(speedlimit >= 30 && speedlimit < 50){
+        return 2;
+    }
+    else if(speedlimit >= 50 && speedlimit < 80){
+        return 3;
+    }
+    else if(speedlimit >= 80 && speedlimit < 100){
+        return 4;
+    }
+    else{
+        return 5;
+    }
+}

@@ -1,0 +1,239 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+#include "astar.h"
+#include "dataStructure.h"
+#include <math.h>
+
+using namespace std;
+// global data structure
+extern dataStructure data_structure;
+extern double avg_lat; // average latitude
+
+// need to init map
+void astar::init_astar(std::vector<aNode*> &_map){
+    map = _map;
+}
+
+
+double astar::calcG(aNode* curr, aNode* temp, double turn_penalty){
+    double extraG=0;
+    double parentG=0;
+    
+    parentG = curr->G;
+    
+    extraG = data_structure.segments_time[temp->parentSegment];
+//    std::cout << "segment id is: " << temp->parentSegment << ' ';
+//    std::cout << "segment time is: "<< find_street_segment_travel_time(temp->parentSegment) << std::endl;
+    if(data_structure.streetsegmentinfo[curr->parentSegment].streetID != data_structure.streetsegmentinfo[temp->parentSegment].streetID){
+        extraG += turn_penalty;
+    }
+//    std::cout << "tentative G is: "<< parentG + extraG << std::endl;
+    return parentG + extraG;
+}
+
+double astar::calcH(aNode* temp, aNode* end){
+    double length = find_distance_between_two_points(getIntersectionPosition(temp->index), getIntersectionPosition(end->index));
+    return length/27.7778; // 100km/h is the highest speed limit
+}
+
+double astar::calcF(aNode* temp){
+    return temp->G +temp->H;
+}
+
+aNode* astar::get_smallest_F_value_node_from_openset(){
+    
+    if(!openset.empty()){
+        aNode* resNode = openset.front();
+        for(aNode* &temp:openset){
+            if(temp->F < resNode->F){
+                resNode = temp;
+            }
+        }
+        return resNode;
+    }
+    return NULL;
+}
+
+
+
+std::vector<unsigned> astar::get_surround_segments(const aNode* curr) const{
+
+//    std::vector<std::vector<unsigned> > INTSEG; // vector for intersection id -> according street segment id
+    std::vector<unsigned> surround_segments = data_structure.INTSEG[curr->index];
+    std::vector<unsigned> result_surround_segments;
+    for(std::vector<unsigned>::iterator it = surround_segments.begin(); it != surround_segments.end(); ++it){
+        
+
+        StreetSegmentInfo info = data_structure.streetsegmentinfo[*it];
+        // if street segment is one way and we have node for end point, then this street is not valid
+        if(info.oneWay && info.to == curr->index){
+            continue;
+        }
+//        std::cout << *it << std::endl;
+        result_surround_segments.push_back(*it);
+    }
+//    std::cout << "1111111111" << std::endl;
+    return result_surround_segments;
+}
+
+aNode* astar::is_in_list(const std::list<aNode*> &list, const aNode& temp){
+    for(std::list<aNode*>::const_iterator it = list.begin(); it != list.end(); ++it){
+//        if(it != NULL){
+            if((*it)->index == temp.index){
+                return *it;
+            }
+  //      }
+    }
+    return NULL;
+}
+
+// return the StreetSegmentIndex that has min travel time between start and end node
+aNode* astar::find_path(aNode& start, aNode& end, double turn_penalty){
+    aNode* start_node = new aNode(start.index);
+    start_node->H = calcH(start_node, &end);
+    start_node->F = calcF(start_node);
+    
+    openset.push_back(start_node);
+//    std::cout << start.index << " " << end.index << std::endl;
+
+    while(!openset.empty()){
+        aNode* curr = get_smallest_F_value_node_from_openset();
+//        std::cout << std::endl;
+//        std::cout << curr->index << " curr"<< std::endl;
+        
+         
+        if(curr->index == end.index){ // end aNode is in openset, so path has been found
+            return curr;
+        }
+        
+        for(std::list<aNode*>::iterator it = openset.begin(); it != openset.end(); ++it){
+            
+            if((*it)->index == curr->index){
+//                std::cout << "erase from open set " << (*it)->index << std::endl;
+                openset.erase(it);
+                break;
+            }
+        }
+        closeset.push_back(curr);
+//        std::vector<unsigned> astar::get_surround_segments(const aNode* curr)
+        std::vector<unsigned> surround_segments = get_surround_segments(curr);
+        for(std::vector<unsigned>::iterator target = surround_segments.begin(); target != surround_segments.end(); ++target){
+
+            StreetSegmentInfo info = data_structure.streetsegmentinfo[*target];
+            aNode* temp = NULL;
+//            bool tentative_is_better = false;
+
+            // get proper surrounding node
+            if(info.from == curr->index){
+                temp = new aNode(info.to);
+//                temp->index = info.to;
+            }
+            else{
+                temp = new aNode(info.from);
+//                temp->index = info.from;
+            }
+//            std::cout << temp->index << " temp" << std::endl;
+            // ****************************************************************
+            
+            if(is_in_list(closeset, *temp)){
+//                std::cout << temp->index << " temp is in close set" << std::endl;
+                continue;
+            }
+            double prev_segment = temp->parentSegment;
+            temp->parentSegment = *target;
+            double tentative_G = calcG(curr, temp, turn_penalty);
+//            std::cout << "before any changes, temp->G : " << temp->G << std::endl;
+            
+//            std::cout << "openset contains:";
+//            for (std::list<aNode*>::iterator it=openset.begin(); it != openset.end(); ++it){
+//                std::cout << " ( " << (*it)->index << " , " << (*it)->parentSegment << " ) ";
+//            }
+              
+//            std::cout << std::endl;
+            
+            // temp node is not in openset, update openset
+            if(!is_in_list(openset, *temp)){
+                
+                openset.push_back(temp);
+//                tentative_is_better = true;
+//                std::cout << "add into open set" << temp->index <<" current G:" << temp->G << std::endl;
+                
+                temp->parentNode = curr;
+                
+//                std::cout << "**********" << std::endl;
+//                std::cout << "parent node" << curr->index << std::endl;
+//                std::cout << "parent segment" << *target << std::endl;
+                
+                temp->G = tentative_G;
+                temp->H = calcH(temp, &end);
+                temp->F = calcF(temp);
+                
+//                std::cout << "current temp-> G: " << temp->G;
+//                std::cout << ", H: " << temp->H;
+//                std::cout << ", F: " << temp->F << std::endl;
+//                std::cout << "**********" << std::endl;
+//                std::cout << std::endl;
+                
+            }
+            else{
+                aNode* new_temp = is_in_list(openset, *temp);
+//                std::cout << "before any changes, new_temp->G : " << new_temp->G << std::endl;
+                
+                // temp node is in openset, compare tentativeG with originalG
+                if(tentative_G < new_temp->G){
+    //                tentative_is_better = true;
+//                    std::cout << "modify from open set" << new_temp->index <<" current G:" << new_temp->G << std::endl;
+                    new_temp->parentNode = curr;
+                    new_temp->parentSegment = *target;
+                    
+//                    std::cout << "**********" << std::endl;
+//                    std::cout << "parent node" << curr->index << std::endl;
+//                    std::cout << "parent segment" << *target << std::endl;
+
+                    new_temp->G = tentative_G;
+                    new_temp->H = calcH(new_temp, &end);
+                    new_temp->F = calcF(new_temp);
+
+//                    std::cout << "tentative G: " << new_temp->G;
+//                    std::cout << ", H: " << new_temp->H;
+//                    std::cout << ", F: " << new_temp->F << std::endl;
+//                    std::cout << "**********" << std::endl;
+//                    std::cout << std::endl;
+                    delete temp;
+                }
+                else{ // don't need to change
+                    temp->parentSegment = prev_segment; // revert to previous parent segment
+//                    std::cout << "do nothing" << std::endl;
+                }
+            }        
+                
+        }
+    }
+    return NULL;
+}
+
+std::vector<unsigned> astar::get_path(aNode &start, aNode &end, double turn_penalty){
+//    std::cout << start.index << " " << end.index << std::endl;
+    aNode* result = find_path(start, end, turn_penalty);
+    std::vector<unsigned> path;
+//    std::cout << "end find path" << std::endl;
+    while(result != NULL){
+//        std::cout << result->index << " ";
+
+        if(result->parentNode != NULL){
+//            cout << "parent" << result->parentNode->index << endl;
+            path.push_back(result->parentSegment);
+            result = result->parentNode;
+        }
+        else{
+            break;
+        }
+    }
+    std::reverse(path.begin(), path.end());
+    return path;
+}
+

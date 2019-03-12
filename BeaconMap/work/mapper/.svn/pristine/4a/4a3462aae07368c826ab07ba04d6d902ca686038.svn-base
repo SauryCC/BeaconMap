@@ -1,0 +1,206 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+#include "dataStructure.h"
+#include "m1.h"
+#include <algorithm>
+
+
+dataStructure::dataStructure(){
+    
+}
+
+void dataStructure::load(){
+    //Load map related data structures
+    unsigned numSeg = getNumberOfStreetSegments();  
+    unsigned numStreet =  getNumberOfStreets();
+    unsigned numofIntersections =getNumberOfIntersections();
+    unsigned numofPOI = getNumberOfPointsOfInterest();
+    std::string test;
+    
+    double length =0.0;
+    
+    // assign values as vector
+    INTSEG.assign(numofIntersections,std::vector<unsigned> ());
+
+    for (unsigned i =0; i<numStreet;i++){
+        test = getStreetName(i); // the name for the street
+        
+        streetToname.insert(std::pair<unsigned,std::string> (i,test));  // push the name into the map with streetID as key
+        std::unordered_map<std::string,std::vector<unsigned> > ::iterator it = nameTostreet.find(test);  //  find there exist a key that called test
+        
+        // if not, creating a new key and its value 
+        if ( it == nameTostreet.end()){
+            nameTostreet.insert(std::pair<std::string,std::vector<unsigned>> (test,std::vector<unsigned>()));
+            nameTostreet[test].push_back(i);
+        } 
+        else  nameTostreet[test].push_back(i);// if the key is already existed, push back the another value
+        
+        //create all the keys for a map but leave the value empty
+        intersections.insert(std::pair<unsigned,std::vector<unsigned>>(i,std::vector<unsigned> ()));
+        segments.insert(std::pair<unsigned,std::vector<unsigned>>(i,std::vector<unsigned> ()));
+        
+    }
+    
+    //create all the keys for a map but leave the value empty
+    for (unsigned i = 0 ; i< numofIntersections;i++){
+         interTostreetName.insert(std::pair<unsigned,std::vector<std::string>>(i,std::vector<std::string> ()));
+    }
+    
+    for (unsigned i =0; i<numSeg; i++){
+        // store all the segments info in order
+        streetsegmentinfo.push_back(getStreetSegmentInfo(i));  
+    }
+   
+    for (unsigned i = 0; i<numSeg; i++){
+        // store all the from and to into the variables: intersections and sort it later 
+         intersections[streetsegmentinfo[i].streetID].push_back(streetsegmentinfo[i].from);
+         intersections[streetsegmentinfo[i].streetID].push_back(streetsegmentinfo[i].to);
+         segments[ streetsegmentinfo[i].streetID].push_back(i);
+         
+         // calculating the length and store it into the variable: street_segment_length
+         if (streetsegmentinfo[i].curvePointCount == 0){
+             length = find_distance_between_two_points(getIntersectionPosition(streetsegmentinfo[i].from),getIntersectionPosition(streetsegmentinfo[i].to));
+             street_segment_length.push_back(length);
+             segments_time.push_back(length/(0.277778 * streetsegmentinfo[i].speedLimit));
+         }
+         else {
+            LatLon temp_point1 = getStreetSegmentCurvePoint(i, 0); // first curve point
+            LatLon temp_point2 = getStreetSegmentCurvePoint(i, streetsegmentinfo[i].curvePointCount-1); // last curve point
+            // first calculate the sum of first and last curve 
+            length = length + find_distance_between_two_points(temp_point1, getIntersectionPosition(streetsegmentinfo[i].from))+ find_distance_between_two_points(getIntersectionPosition(streetsegmentinfo[i].to), temp_point2); // last curve segment length
+            // then loop street segment, find curve length between two curve points
+            for(unsigned a=0; a<streetsegmentinfo[i].curvePointCount-1; a++){
+                temp_point1 = getStreetSegmentCurvePoint(i, a); // first curve point
+                temp_point2 = getStreetSegmentCurvePoint(i, a+1); // second curve point
+                length += find_distance_between_two_points(temp_point1, temp_point2);
+            }
+            // store street length in vector
+            street_segment_length.push_back(length);
+            // store street segment travel time in vector
+            segments_time.push_back(length/(0.277778 * streetsegmentinfo[i].speedLimit));
+        
+       }
+        length = 0.0;  // clear the length ;
+    }
+    
+    for (unsigned i = 0; i<numSeg; i++){
+        // store all the segment id in 2d vector of intersection to street segment
+        INTSEG[streetsegmentinfo[i].from].push_back(i); 
+        INTSEG[streetsegmentinfo[i].to].push_back(i);    
+    }
+    
+    for (unsigned i = 0; i<numSeg; i++){
+        // store street id in 2d vector of intersection_to_streetName
+         interTostreetName[streetsegmentinfo[i].from].push_back(getStreetName(getStreetSegmentInfo(i).streetID));
+         interTostreetName[streetsegmentinfo[i].to].push_back(getStreetName(getStreetSegmentInfo(i).streetID));
+    } 
+    
+    
+   
+    for(std::unordered_map<unsigned,std::vector<unsigned> >::iterator iter =intersections.begin(); iter != intersections.end(); iter++){
+        // eliminating all the duplicate elements in the map
+        std::sort( iter->second.begin(), iter->second.end() );
+        iter->second.erase(std::unique( iter->second.begin(), iter->second.end() ), iter->second.end() ); 
+    }
+    
+    
+    // intersection_rtree
+    for (unsigned i = 0; i < numofIntersections; i++) {
+
+        LatLon temp_intersection = getIntersectionPosition(i);
+        double lat = temp_intersection.lat() * DEG_TO_RAD;
+        double lon = temp_intersection.lon() * DEG_TO_RAD;
+        //conversion from LatLon to Cartesian xyz
+        bg::model::point<double, 3, bg::cs::cartesian> coordinate(EARTH_RADIUS_IN_METERS * std::cos(lat) * std::cos(lon),
+                EARTH_RADIUS_IN_METERS * std::cos(lat) * std::sin(lon),
+                EARTH_RADIUS_IN_METERS * std::sin(lat));
+        // r-tree insertions
+        intersection_rtree.insert(std::make_pair(coordinate, i));
+    }
+    
+    // point of interest rtree
+    for (unsigned i = 0; i < numofPOI; i++) {
+        
+        LatLon poi = getPointOfInterestPosition(i);
+        double lat = poi.lat() * DEG_TO_RAD;
+        double lon = poi.lon() * DEG_TO_RAD;
+        //conversion from LatLon to Cartesian xyz
+        bg::model::point<double, 3, bg::cs::cartesian> coordinate(EARTH_RADIUS_IN_METERS * std::cos(lat) * std::cos(lon),
+                EARTH_RADIUS_IN_METERS * std::cos(lat) * std::sin(lon),
+                EARTH_RADIUS_IN_METERS * std::sin(lat));
+        // r-tree insertions
+        poi_rtree.insert(std::make_pair(coordinate, i));
+    }
+    
+    
+    // hash table for nodes
+    for(unsigned i=0; i<getNumberOfNodes(); ++i){
+        // how to define type of const OSMNode*
+        nodes.insert(std::make_pair<OSMID, const OSMNode*> (getNodeByIndex(i)->id(), getNodeByIndex(i)));
+    }
+    
+    // hash table for ways
+    for(unsigned i=0; i<getNumberOfWays(); ++i){
+        //const OSMWay* w = getWayByIndex(i);
+        ways.insert(std::make_pair<OSMID, const OSMWay*> (getWayByIndex(i)->id(), getWayByIndex(i)));
+    }
+    
+    for(unsigned a = 0; a < getNumberOfIntersections(); a ++){
+        intersection.push_back(getIntersectionPosition(a));
+        
+    }
+    
+    for (unsigned i = 0; i < numofPOI; i++ ){
+        POItype.push_back(getPointOfInterestType(i));
+        test = getPointOfInterestName(i); // the name for the street
+         
+        std::unordered_map<std::string,std::vector<unsigned>> ::iterator it = nameToPOI.find(test);  //  find there exist a key that called test
+        
+        // if not, creating a new key and its value 
+        if ( it == nameToPOI.end()){
+            nameToPOI.insert(std::pair<std::string,std::vector<unsigned>> (test,std::vector<unsigned>()));
+            nameToPOI[test].push_back(i);
+        } 
+        else  nameToPOI[test].push_back(i);
+    }
+
+    
+}
+
+
+void dataStructure::clear(){
+    
+    segments.clear();
+    intersections.clear();
+    nameTostreet.clear();
+    streetToname.clear();
+    interTostreetName.clear();
+    streetsegmentinfo.clear();
+    INTSEG.clear();
+    street_segment_length.clear();
+    segments_time.clear();
+    
+    intersection_rtree.clear();
+    poi_rtree.clear();
+    
+    nodes.clear();
+    ways.clear();
+    
+    intersection.clear();
+    ids_of_intersections.clear();
+    
+    POItype.clear();
+    dims_features.clear();
+    nameToPOI.clear();
+    id_of_poi.clear();
+    input_string.clear();
+
+}
+
+dataStructure::~dataStructure(){
+    clear();
+}

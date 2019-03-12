@@ -1,0 +1,249 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+#include "astar.h"
+#include "dataStructure.h"
+#include <math.h>
+
+using namespace std;
+// global data structure
+extern dataStructure data_structure;
+extern double avg_lat; // average latitude
+
+
+// calculate G value with parent segment travel time plus possible turn_penalty
+double astar::calcG(aNode* curr, aNode* temp, double turn_penalty){
+    double parentG = curr->G;
+    double extraG = data_structure.segments_time[temp->parentSegment];
+
+    // if street ids are not the same
+    if(data_structure.streetsegmentinfo[curr->parentSegment].streetID != 
+            data_structure.streetsegmentinfo[temp->parentSegment].streetID){
+        extraG += turn_penalty;
+    }
+
+    return parentG + extraG;
+}
+
+// return surronding street segments id due to an intersection
+std::vector<unsigned> astar::get_surround_segments(const aNode* curr) const{
+
+          // INTSEG is the vector for intersection id -> according street segment id
+    std::vector<unsigned> surround_segments = data_structure.INTSEG[curr->index];
+    std::vector<unsigned> result_surround_segments;
+    for(std::vector<unsigned>::iterator it = surround_segments.begin(); 
+            it != surround_segments.end(); ++it){
+        
+        StreetSegmentInfo info = data_structure.streetsegmentinfo[*it];
+
+        // if street segment is one way and we have node for end point, 
+        // then this street is not valid
+        if(info.oneWay && info.to == curr->index){
+            continue;
+        }
+        result_surround_segments.push_back(*it);
+    }
+    return result_surround_segments;
+}
+
+
+// return the StreetSegmentIndex that has min travel time between start and end node
+aNode* astar::find_path(aNode& start, aNode& end, double turn_penalty){
+    aNode* start_node = new aNode(start.index);
+    start_node->G = 0; // change start_node->G from INF to 0
+    start_node->F = 0;
+    
+    openset.push(std::make_pair(0, start_node));
+    smallest_value[start_node->index] = 0;
+    aNode_map.push_back(start_node); // put new allocated start node in aNode_map
+
+    while(!openset.empty()){
+
+        aNode* curr = openset.top().second;
+        if(curr->index == end.index){ 
+            // end aNode is in openset, so path has been found
+            return curr;
+        }
+        
+        openset.pop();
+
+        std::vector<unsigned> surround_segments = get_surround_segments(curr);
+
+        for(std::vector<unsigned>::iterator target = surround_segments.begin(); 
+                target != surround_segments.end(); ++target){
+
+            StreetSegmentInfo info = data_structure.streetsegmentinfo[*target];
+            aNode* neighbor = NULL;
+
+            // get proper surrounding node
+            if(info.from == curr->index){
+                neighbor = new aNode(info.to);
+            }
+            else{
+                neighbor = new aNode(info.from);
+            }
+
+            // ****************************************************************
+
+	    aNode* temp = new aNode(neighbor->index);
+	    temp->parentSegment = *target;
+            
+            if((smallest_value[neighbor->index] == 0)&& neighbor->index != start.index){
+                smallest_value[neighbor->index] = neighbor->INF;
+            }// make every unvisited node has infinity small value
+            // so that those new nodes will be store in openset
+
+	    double tentative_G = calcG(curr, temp, turn_penalty);
+            
+            // find a smaller G value and update into openset
+	    if(tentative_G < smallest_value[neighbor->index]){
+		// update
+		neighbor->parentNode = curr;
+		neighbor->parentSegment = *target;
+
+		neighbor->G = tentative_G;
+		neighbor->H = find_distance_between_two_points
+                        (data_structure.intersection[neighbor->index], 
+                        data_structure.intersection[end.index])/27.7778;
+                // heuristic value with direct distance between two intersections, 
+                // 27.7778 = 100km/h * 0.277778 (m/s)
+                
+		neighbor->F = tentative_G + neighbor->H; // F = G + H
+		openset.push(std::make_pair(neighbor->F, neighbor)); // G value and aNode*
+                
+                smallest_value[neighbor->index] = tentative_G;
+                
+                aNode_map.push_back(neighbor); 
+                // put new allocated neighbor node in aNode_map
+	    }
+	    else{
+                // do nothing
+                
+		delete neighbor; // don't need to change
+	    }
+	    delete temp;        
+        }
+    }
+    return NULL;
+}
+
+
+// return segment id of the path
+std::vector<unsigned> astar::get_path(aNode &start, aNode &end, double turn_penalty){
+
+    aNode* result = find_path(start, end, turn_penalty);
+    std::vector<unsigned> path;
+    //  loop until it finds the start node
+    while(result != NULL){
+
+        if(result->parentNode != NULL){
+            path.push_back(result->parentSegment);
+            result = result->parentNode; // go to parent node
+        }
+        else{
+            break;
+        }
+    }
+    // reverse the path in correct order
+    std::reverse(path.begin(), path.end());
+    return path;
+}
+
+// return segment id of the path
+std::vector<unsigned> astar::get_poi_path(aNode &start, const std::vector<unsigned> &end, double turn_penalty){
+    aNode* result = find_poi_path(start, end, turn_penalty);
+    std::vector<unsigned> path;
+    
+    //  loop until it finds the start node
+    while(result != NULL){
+
+        if(result->parentNode != NULL){
+            path.push_back(result->parentSegment);
+            result = result->parentNode;
+        }
+        else{
+            break;
+        }
+    }
+    std::reverse(path.begin(), path.end());
+    return path;
+}
+
+// return the StreetSegmentIndex that has min travel time between start and end node
+aNode* astar::find_poi_path(aNode &start, const std::vector<unsigned> &end_poi_inter, double turn_penalty){
+    aNode* start_node = new aNode(start.index);
+    start_node->G = 0; // change start_node->G from INF to 0
+    start_node->F = 0;
+    
+    openset.push(std::make_pair(0, start_node));
+    smallest_value[start_node->index] = 0;
+    aNode_map.push_back(start_node); // put new allocated start node in aNode_map
+
+    while(!openset.empty()){
+
+        aNode* curr = openset.top().second;
+
+        // find whether curr is the endpoint (an intersection near poi)
+        for(std::vector<unsigned>::const_iterator it = end_poi_inter.begin(); 
+                it != end_poi_inter.end(); ++it){
+            if(curr->index == *it){
+                return curr; // curr always stores the fastest path in the openset
+            }
+        }
+
+        openset.pop();
+
+        std::vector<unsigned> surround_segments = get_surround_segments(curr);
+
+        for(std::vector<unsigned>::iterator target = surround_segments.begin(); 
+                target != surround_segments.end(); ++target){
+
+            StreetSegmentInfo info = data_structure.streetsegmentinfo[*target];
+            aNode* neighbor = NULL;
+
+            // get proper surrounding node
+            if(info.from == curr->index){
+                neighbor = new aNode(info.to);
+            }
+            else{
+                neighbor = new aNode(info.from);
+            }
+
+            // ****************************************************************
+
+	    aNode* temp = new aNode(neighbor->index);
+	    temp->parentSegment = *target;
+            
+            if((smallest_value[neighbor->index] == 0)&& neighbor->index != start.index){
+                smallest_value[neighbor->index] = neighbor->INF;
+            } // make every unvisited node has infinity small value
+            // so that those new nodes will be store in openset
+
+	    double tentative_G = calcG(curr, temp, turn_penalty);
+            
+            
+            // how to get node in open set? and node already exist
+	    if(tentative_G < smallest_value[neighbor->index]){ 
+                // if temp is not in openset, then neighbor->G=INF
+		// update
+		neighbor->parentNode = curr;
+		neighbor->parentSegment = *target;
+
+		neighbor->G = tentative_G;
+		openset.push(std::make_pair(neighbor->G, neighbor)); // G value and aNode*
+                
+                smallest_value[neighbor->index] = tentative_G;
+                aNode_map.push_back(neighbor); 
+                // put new allocated neighbor node in aNode_map
+	    }
+	    else{
+		delete neighbor; // don't need to change
+	    }
+	    delete temp;
+        }
+    }
+    return NULL;
+}

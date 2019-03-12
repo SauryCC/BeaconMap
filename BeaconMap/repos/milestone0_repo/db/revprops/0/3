@@ -1,0 +1,14 @@
+K 8
+svn:date
+V 27
+2018-01-10T19:47:32.456000Z
+K 7
+svn:log
+V 184
+In math_utils.cpp, line 97, the program trys to access a variable out of the range of the list(my_list_to_average).
+REMOVING THE EQUAL SIGN IN THE FOR LOOP(LINE 94) SOLVES THE PROBLEM.
+K 10
+svn:author
+V 8
+lukaifen
+END

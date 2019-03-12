@@ -1,0 +1,617 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+#include "m2_header.h"
+#include <vector>
+#include "m1.h"
+void act_on_mousebutton(float x, float y, t_event_buttonPressed button_info);
+unsigned close_inter (double lon, double lat);
+extern std::vector<LatLon> intersection;
+bool mouse_move = false; 
+float x_coordinate, y_coordinate;
+
+bool if_draw_intersection = false;
+std::vector<unsigned> ids_of_intersections;
+
+
+
+void store_osm_data_structure(){
+    // hash table for nodes
+    for(unsigned i=0; i<getNumberOfNodes(); ++i){
+        // how to define type of const OSMNode*
+        nodes.insert(std::make_pair<OSMID, const OSMNode*> (getNodeByIndex(i)->id(), getNodeByIndex(i)));
+    }
+    
+    // hash table for ways
+    for(unsigned i=0; i<getNumberOfWays(); ++i){
+        //const OSMWay* w = getWayByIndex(i);
+        ways.insert(std::make_pair<OSMID, const OSMWay*> (getWayByIndex(i)->id(), getWayByIndex(i)));
+    }
+}
+
+void draw_map(){
+    store_osm_data_structure();
+
+    double lat_max = getIntersectionPosition(0).lat();
+    double lat_min = lat_max;
+    double lon_max = getIntersectionPosition(0).lon();
+    double lon_min = lon_max;
+  
+    for(unsigned a = 0; a < getNumberOfIntersections(); a ++){
+        double temp_lat = getIntersectionPosition(a).lat();
+        double temp_lon = getIntersectionPosition(a).lon();
+         if(a==0){
+             lat_max = temp_lat;
+             lat_min = temp_lat;
+             lon_max = temp_lon;
+             lon_min = temp_lon;
+         }
+         if(lat_max < temp_lat) lat_max = temp_lat;
+         if(lon_max < temp_lon) lon_max = temp_lon;
+         if(lat_min > temp_lat) lat_min = temp_lat;
+         if(lon_min > temp_lon) lon_min = temp_lon; 
+    }
+    avg_lat = 0.5*(lat_max + lat_min);
+    
+    init_graphics("Some Example Graphics", t_color(232,232,232,255));
+    
+    create_button("Window", "Find", act_on_new_button_func);
+   
+    
+    set_visible_world (lon_min * cos(avg_lat) * DEG_TO_RAD, lat_min * DEG_TO_RAD,
+                       lon_max * cos(avg_lat) * DEG_TO_RAD, lat_max * DEG_TO_RAD);
+    
+    update_message("Toronto Map");
+    set_drawing_buffer(OFF_SCREEN);
+    set_mouse_move_input(true);
+    clearscreen();
+    event_loop(act_on_mousebutton,NULL,NULL, drawscreen);
+    
+    close_graphics();
+}
+
+void act_on_mousebutton(float x, float y, t_event_buttonPressed button_info){
+    
+      set_draw_mode(DRAW_NORMAL); // Should set this if your program does any XOR drawing in callbacks.
+      clearscreen(); /* Shou);
+      double x_con,y_con;ld precede drawing for all drawscreens */
+      double x_con,y_con;
+       
+         
+   
+    
+    draw_street_and_name();
+    
+    draw_feature();
+    
+       x_con = x/cos(avg_lat)/DEG_TO_RAD;
+       y_con = y/DEG_TO_RAD;
+       unsigned position = close_inter (x_con, y_con);
+       double close_inter_x = intersection[position].lon()* cos(avg_lat) * DEG_TO_RAD;
+       double close_inter_y = intersection[position].lat() * DEG_TO_RAD;
+       std::cout<<"Intersection name: " << getIntersectionName(position)<<std::endl;
+       std::cout<<"Intersection id: " << position <<std::endl;
+       draw_surface(load_png_from_file("libstreetmap/resources/marker.png"),close_inter_x, close_inter_y);
+    
+   
+    copy_off_screen_buffer_to_screen();
+}
+
+
+unsigned close_inter (double lon, double lat){
+    
+    double ref = 10000000;
+    double dist = 0;
+    unsigned cl = 0;
+    
+    
+    double mypoi_y = lat * DEG_TO_RAD;
+    double averagelat = cos(mypoi_y);
+    double mypoi_x =lon* DEG_TO_RAD * averagelat;
+    
+    double closest_x, closest_y;
+    
+    unsigned size = getNumberOfIntersections();
+    
+    
+        /*things above preset values that are needed in the following comparison*/
+
+    
+    for(unsigned i = 0 ; i < size; i ++){
+        
+        closest_x = (intersection[i]).lon() * averagelat * DEG_TO_RAD;
+        closest_y = (intersection[i]).lat() * DEG_TO_RAD;
+        
+        dist = pow(mypoi_y - closest_y, 2) + pow(closest_x - mypoi_x,2);
+        
+        if(ref > dist){
+              cl = i;
+              ref = dist;
+        }
+        
+    }
+
+    return cl;
+}
+
+
+void drawscreen(void) {
+
+    /* The redrawing routine for still pictures.  The graphics package calls  
+     * this routine to do redrawing after the user changes the window 
+     * in any way.                                                    
+     */
+    set_draw_mode(DRAW_NORMAL); // Should set this if your program does any XOR drawing in callbacks.
+    clearscreen(); /* Should precede drawing for all drawscreens */
+    
+    
+            
+    std::cout<< get_visible_world().area()<<"\n";
+
+    mouse_move = false; // clear the flag 
+    
+    draw_street_and_name();
+
+    draw_feature();
+
+    draw_subway();
+    
+//    // first level
+//    
+//    //second level
+//    if (LOD_area_test(5.0e-5)){
+//        
+//    }
+//    //third level
+//    if(LOD_area_test(1.5e-5)){
+//        
+//    }
+//    //fourth level 
+//    if(LOD_area_test(6.0e-6)){
+//        
+//    }
+//    //fifth level
+//    if(LOD_area_test(2.0e-6)){
+//        
+//    }
+//    //sixth level 
+//    if (LOD_area_test(7.0e-7)){
+//        
+//    }
+//    //seventh level 
+//    if (LOD_area_test(3.0e-7)){
+//        
+//    }
+//    //eighth level 
+//    if (LOD_area_test(9.0e-8)){
+//        
+//    }
+//    //ninth level 
+//    if (LOD_area_test(4.0e-8)){
+//        
+//    }
+//    //tenth level 
+//    if (LOD_area_test(1.2e-8)){
+//        
+//    }
+
+       //float area = get_visible_world().area();
+    if(if_draw_intersection){
+        for(unsigned i = 0; i < ids_of_intersections.size() ; i++){
+            LatLon temp = getIntersectionPosition(ids_of_intersections[i]);
+            Surface icon = load_png_from_file("libstreetmap/resources/marker.png");
+            draw_surface(icon, temp.lon() * cos(avg_lat) * DEG_TO_RAD , temp.lat() * DEG_TO_RAD );
+        
+        }
+    }
+    
+    
+    copy_off_screen_buffer_to_screen();
+  
+}
+
+
+int street_seg_linewidth(float speedlimit){
+    if(speedlimit >= 100){
+        return 8;
+    }
+    else if(speedlimit >= 80){
+        return 7;
+    }
+    else if(speedlimit >= 50){
+        return 6;
+    }
+    else if(speedlimit >= 30){
+        return 5;
+    }
+    else{
+        return 4;
+    }
+}
+
+void draw_street_and_name(){
+    
+    setlinestyle(SOLID);
+    setlinewidth(1);
+    setcolor(WHITE);
+    int road_test = 0;
+    
+    unsigned numofStreetSeg = getNumberOfStreetSegments();
+//    if (LOD_area_test(0.000114566)){
+//        if ()
+//    }
+
+    for(unsigned i=0; i<numofStreetSeg; i++){
+        LatLon point1 = getIntersectionPosition(getStreetSegmentInfo(i).from);
+        LatLon point2 = getIntersectionPosition(getStreetSegmentInfo(i).to);
+        float speed = getStreetSegmentInfo(i).speedLimit;
+        setlinewidth(street_seg_linewidth(speed));
+        
+        // x = lon * cos(lat_avg)
+        double x1 = point1.lon() * cos(avg_lat) * DEG_TO_RAD;
+        double x2 = point2.lon() * cos(avg_lat) * DEG_TO_RAD;
+        // y = lat
+        double y1 = point1.lat() * DEG_TO_RAD;
+        double y2 = point2.lat() * DEG_TO_RAD;
+        
+        if(getStreetSegmentInfo(i).curvePointCount == 0){
+            drawline(x1, y1, x2, y2);
+        }
+        else{
+            LatLon temp_point1 = getStreetSegmentCurvePoint(i, 0); // first curve point
+            LatLon temp_point2 = getStreetSegmentCurvePoint(i, getStreetSegmentInfo(i).curvePointCount-1); // last curve point
+            // first draw first and last curve 
+            double temp_x1 = temp_point1.lon() * cos(avg_lat) * DEG_TO_RAD;
+            double temp_x2 = temp_point2.lon() * cos(avg_lat) * DEG_TO_RAD;
+            
+            double temp_y1 = temp_point1.lat() * DEG_TO_RAD;
+            double temp_y2 = temp_point2.lat() * DEG_TO_RAD;
+            
+            drawline(x1, y1, temp_x1, temp_y1);
+            drawline(temp_x2, temp_y2, x2, y2);
+            
+            // then loop street segment, find curve length between two curve points
+            for(unsigned a=0; a<getStreetSegmentInfo(i).curvePointCount-1; a++){
+                temp_point1 = getStreetSegmentCurvePoint(i, a); // first curve point
+                temp_point2 = getStreetSegmentCurvePoint(i, a+1); // second curve point
+                
+                temp_x1 = temp_point1.lon() * cos(avg_lat) * DEG_TO_RAD;
+                temp_x2 = temp_point2.lon() * cos(avg_lat) * DEG_TO_RAD;
+
+                temp_y1 = temp_point1.lat() * DEG_TO_RAD;
+                temp_y2 = temp_point2.lat() * DEG_TO_RAD;
+                
+                drawline(temp_x1, temp_y1, temp_x2, temp_y2);
+            }
+            
+        }
+        
+    }
+    
+    if (LOD_area_test(4.0e-08)){
+        std::vector<unsigned> streetid_test; 
+        double curve_x2;
+        double curve_y2;
+         
+         for (unsigned k =0; k< numofStreetSeg; k++){
+              LatLon point1 = getIntersectionPosition(getStreetSegmentInfo(k).from);
+              LatLon point2 = getIntersectionPosition(getStreetSegmentInfo(k).to);
+            // x = lon * cos(lat_avg)
+            double x1 = point1.lon() * cos(avg_lat) * DEG_TO_RAD;
+            double x2 = point2.lon() * cos(avg_lat) * DEG_TO_RAD;
+            // y = lat
+            double y1 = point1.lat() * DEG_TO_RAD;
+            double y2 = point2.lat() * DEG_TO_RAD;
+            double xc = 0.5*(x2+x1);
+            double yc = 0.5*(y2+y1);
+            unsigned streetID =getStreetSegmentInfo(k).streetID;
+            
+            
+            if (std::find(streetid_test.begin(), streetid_test.end(), streetID) == streetid_test.end()){
+                if (getStreetSegmentInfo(k).curvePointCount == 1){
+                curve_x2 = getStreetSegmentCurvePoint(k,0).lon() * cos(avg_lat) * DEG_TO_RAD;
+                curve_y2 = getStreetSegmentCurvePoint(k,0).lat() *  DEG_TO_RAD;
+                setcolor(BLACK); 
+                settextrotation(0);
+                drawtext(xc, yc, getStreetName(getStreetSegmentInfo(k).streetID), abs(x1-curve_x2), abs(y1-curve_y2)); 
+                }
+                else {
+                setcolor(BLACK); 
+                settextrotation(atan((y2-y1)/(x2-x1))*180/PI);
+                drawtext(xc, yc, getStreetName(getStreetSegmentInfo(k).streetID), abs(x1-x2), abs(y1-y2)); 
+                }
+                
+            }
+            if (getStreetSegmentInfo(k).oneWay){
+                if ((x2-x1)>=0){
+                 setcolor(BLACK);
+                 settextrotation(atan((y2-y1)/(x2-x1))*180/PI);
+                 drawtext(xc, yc, "->", 1); 
+                }
+                else {
+                 setcolor(BLACK);
+                 settextrotation(atan((y2-y1)/(x2-x1))*180/PI);
+                 drawtext(xc, yc, "<-", 1); 
+                }
+               
+            }
+         }
+         
+     }
+}
+
+void draw_feature(){
+    unsigned num_of_features = getNumberOfFeatures();
+    Surface icon = load_png_from_file("libstreetmap/resources/small_image.png");
+
+    for(unsigned i = 0; i < num_of_features; i++){
+
+        FeatureType temp_feature = getFeatureType(i);
+        unsigned num_of_points = getFeaturePointCount(i);
+        t_point list_of_points[num_of_points];
+
+        for(unsigned a = 0; a < num_of_points; a++){
+
+            list_of_points[a].x = getFeaturePoint(i, a).lon() * cos(avg_lat) * DEG_TO_RAD;
+            list_of_points[a].y = getFeaturePoint(i, a).lat() * DEG_TO_RAD;
+        }
+
+        if(temp_feature == 1){//Park
+
+            setcolor( 199,  238,  185, 255);
+            fillpoly(list_of_points, num_of_points);
+        }
+        else if(temp_feature == 2){//Beach
+            setcolor( 240,  240,  150, 255);
+            fillpoly(list_of_points, num_of_points);
+        }
+        else if(temp_feature == 3){//Lake
+            setcolor( 170,  218,  255, 255);
+            fillpoly(list_of_points, num_of_points);
+        }
+        else if(temp_feature == 4){//River
+
+            setcolor( 170,  218,  255, 255);
+            fillpoly(list_of_points, num_of_points);
+        }
+        else if(temp_feature == 5){//Island
+            setcolor(232,232,232,255);
+            fillpoly(list_of_points, num_of_points);
+        }
+        else if(temp_feature == 6){//Shoreline, deprecated, no longer used & should be removed
+
+        }
+//        
+        else if(temp_feature == 0){//Unknown
+            setcolor(LIGHTGREY);
+            fillpoly(list_of_points, num_of_points);
+        }
+
+    
+    if (LOD_area_test(7.0e-07)){ // if the level of detail accurate to 7th zoom in 
+       if(temp_feature == 7){//Building
+                setcolor(251,  245,  226, 255);
+                fillpoly(list_of_points, num_of_points);
+            }
+
+    }
+    
+    if (LOD_area_test(6.0e-06)){
+         if(temp_feature == 10){//Stream
+                setlinewidth(0.3);
+                setcolor( 170,  218,  255, 255);
+                for(unsigned ref = 0; ref < num_of_points - 1; ref++){
+                    drawline(list_of_points[ref], list_of_points[ref+1]);
+                }           
+            }
+         if(temp_feature == 9){//Golfcourse
+                setcolor( 212,  242,  202, 255);
+                fillpoly(list_of_points, num_of_points);
+                
+            }
+         if(temp_feature == 8){//Greenspace
+                setcolor( 212,  242,  202, 255);
+                fillpoly(list_of_points, num_of_points);
+            }
+         
+    
+  
+    }
+
+        }
+        if (LOD_area_test(4.0e-08)){
+        float x, y;
+        for (unsigned i = 0; i< getNumberOfPointsOfInterest(); i ++){
+           x =  getPointOfInterestPosition(i).lon()*cos(avg_lat) * DEG_TO_RAD; 
+           y =  getPointOfInterestPosition(i).lat()* DEG_TO_RAD;
+           setcolor( 50,  250,  250, 255); 
+           draw_surface(icon, x, y);
+
+       }
+     }
+     if (LOD_area_test(1.6e-09)){
+        float x, y;
+        for (unsigned i = 0; i< getNumberOfPointsOfInterest(); i ++){
+           x =  getPointOfInterestPosition(i).lon()*cos(avg_lat) * DEG_TO_RAD; 
+           y =  getPointOfInterestPosition(i).lat()* DEG_TO_RAD;
+           setcolor( 0,  0,  0, 255); 
+           settextrotation(0);
+           drawtext(x, y+2.0e-8, getPointOfInterestName(i), 1); 
+
+       }
+     }   
+}
+
+
+void draw_subway(){
+
+    std::string key,value;
+    
+    color_types color_indicies[] = {
+        //BLACK, DARKGREY, LIGHTGREY,
+        RED, ORANGE, YELLOW, GREEN, CYAN, BLUE, PURPLE, // standard ranbow colours.
+        PINK, LIGHTPINK, DARKGREEN, MAGENTA, // some other colours
+        BISQUE, // A weird colour, not unlike the "peach" colour of pencil crayons, but closer to "Blanched Almond" and "Moccasin"
+        LIGHTSKYBLUE, // A nice light blue
+        THISTLE, // A sort of desaturated purple, the colour of thistle flowers
+        PLUM, // much closer to pink than the colour of actual plums, and closer to its flower's colour
+        KHAKI, // Wikipedia says "a light shade of yellow-green" , but this one is more yellow, and very light
+        CORAL, // A burnt pinkish-orange perhaps?
+        TURQUOISE, // turquoise
+        MEDIUMPURPLE, // A nice medium purple
+        DARKSLATEBLUE, // A deep blue, almost purple
+        DARKKHAKI, // darker khaki
+        LIGHTMEDIUMBLUE, // A light blue, with nice contrast to white, but distinct from "BLUE" (NON-X11)
+        SADDLEBROWN, // The browest brown in X11
+        FIREBRICK, // dark red
+        LIMEGREEN, // a pleasing slightly dark green
+        NUM_COLOR
+    };
+    
+    int color_index = 0;
+    
+    // traverse relation, find relation of subway
+    // there are many subway routes
+    for(unsigned index=0; index<getNumberOfRelations(); ++index){
+        
+        const OSMRelation* r = getRelationByIndex(index);
+        // traverse all tags, make sure this is a subway
+        for(unsigned i=0;i<getTagCount(r); ++i){
+            
+            std::tie(key,value) = getTagPair(r,i);
+
+            //std::cout << i << ", (" << key << " , " << value << ")" << std::endl;
+            
+            if(key == "route" && value == "subway"){
+
+                const std::vector<OSMRelation::Member> mem = r->members();
+                // traverse Member vector, get way information
+                for(std::vector<OSMRelation::Member>::const_iterator it = mem.begin() ; it != mem.end(); ++it){
+                    
+                    // make sure type is 'way'
+                    TypedOSMID::EntityType temp = TypedOSMID::EntityType::Way;
+                    if(it->tid.type() == temp){
+                        // find the corresponding way with OSMID
+                        
+                        const OSMWay* w = ways[it->tid];
+                        
+                        // draw subway lines
+                        color_types color = color_indicies[color_index];
+                        draw_osm_way_and_node(w, color);
+                        
+                    }
+                }
+                // std::cout << color_index << std::endl;
+                if(color_index == 25) color_index = 0;
+                else color_index++;
+                break; // stop, because tag 'subway' is found
+            }
+        }
+    }  
+}
+
+
+
+void draw_osm_way_and_node(const OSMWay* w, color_types color){
+    std::string key,value;
+    const std::vector<OSMID> node_ref = w->ndrefs();
+    LatLon point1, point2;
+    Surface icon = load_png_from_file("libstreetmap/resources/small_image.png");
+    // std::string node_name;
+
+    // traverse node reference to get every node
+    for(std::vector<OSMID>::const_iterator it = node_ref.begin() ; it != node_ref.end(); ++it){
+        const OSMNode* n = nodes[*it];
+        
+        point1 = nodes[*it]->coords();
+        if((it+1) != node_ref.end()){
+            point2 = nodes[*(it+1)]->coords();
+            draw_line(point1, point2, color);
+        }
+
+        //draw_point(point1, icon);
+        // drawtext(190, 300, node_name, radius * 2, 150);
+        
+        for(unsigned i=0;i<getTagCount(n); ++i)
+        {
+            
+            std::tie(key,value) = getTagPair(n,i);
+
+            // std::cout << i << ", (" << key << " , " << value << ")" << std::endl;
+            
+            if(key == "railway" && value == "station"){
+                draw_point(point1, icon);
+            }
+            
+        }
+        
+        
+    }
+    if(w->isClosed()){ // closed polygon
+        // need to draw the line between the first and the last node
+        point1 = nodes[*(node_ref.begin())]->coords();
+        point2 = nodes[*(node_ref.end()-1)]->coords();
+
+        draw_line(point1, point2, color);
+    }
+}
+
+void draw_line(LatLon point1, LatLon point2, color_types color){
+    // x = lon * cos(lat_avg)
+    double x1 = point1.lon() * cos(avg_lat) * DEG_TO_RAD;
+    double x2 = point2.lon() * cos(avg_lat) * DEG_TO_RAD;
+    // y = lat
+    double y1 = point1.lat() * DEG_TO_RAD;
+    double y2 = point2.lat() * DEG_TO_RAD;
+    
+    setlinestyle(SOLID);
+    setlinewidth(5); // subway
+    setcolor(color); // subway
+    drawline(x1, y1, x2, y2);
+}
+
+void draw_point(LatLon point, Surface icon){
+    double x = point.lon() * cos(avg_lat) * DEG_TO_RAD;
+    double y = point.lat() * DEG_TO_RAD;
+    
+    setcolor(BLACK);
+    draw_surface(icon, x, y);
+    //fillarc(x, y, 1, 0, 360);
+}
+
+
+
+
+void act_on_new_button_func(void (*drawscreen_ptr) (void)) {
+// Callback function for the new button we created. This function will be called
+// when the user clicks on the button. It just counts how many
+// times you have clicked the button.  
+
+   std::string first_street, second_street;
+    
+    std::cout << "You pressed the FIND button! You can find intersections of two streets by inputting names of them!\n";
+    std::cout << "Please input the name of the first Street:\n";
+    
+    std::getline(std::cin, first_street);
+    
+    std::cout << "Please input the name of the second Street:\n";
+     
+    std::getline(std::cin, second_street);  
+   
+    ids_of_intersections = find_intersection_ids_from_street_names(first_street, second_street);
+
+    
+    if(ids_of_intersections.size() != 0){
+        if_draw_intersection = true;
+    }
+    else{
+        update_message("Intersection Not Found!");
+        std::cout << "Intersection Not Found!" << std::endl;
+    }
+
+    // Re-draw the screen (a few squares are changing colour with time)
+    drawscreen_ptr();
+}

@@ -1,0 +1,2160 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+#include "m4.h"
+#include "m3.h"
+#include <chrono>
+#include <cstdlib>
+#include <iostream>
+#include <ctime>
+#include "StreetsDatabaseAPI.h"
+#include <math.h>
+
+
+
+double length_ptp(unsigned a, unsigned b);
+
+/*
+std::vector<unsigned> traveling_courier(const std::vector<DeliveryInfo>& deliveries,
+                                        const std::vector<unsigned>& depots,
+                                        const float turn_penalty){
+    
+    unsigned length_depot = depots.size();
+    
+    unsigned length_delivery = deliveries.size();
+    
+    std::vector<unsigned> info;
+    
+    for(unsigned i = 0; i < length_delivery; i++){
+        info.push_back(0);
+    }
+    
+    unsigned temp_min = 100000000;
+    
+    unsigned starting = -1;
+    
+    unsigned first = -1;
+    
+    unsigned first_index;
+    
+    for(unsigned i = 0; i < length_depot; i++){
+        unsigned depot = depots[i];
+        for(unsigned j = 0; j < length_delivery; j++){
+           
+            double time = length_ptp(starting, deliveries[j].pickUp);
+            
+            if(time < temp_min){
+                temp_min = time;
+                starting = depot;
+                first = deliveries[j].pickUp;
+                first_index = i;
+            }
+        }
+               
+    }
+    
+    
+    std::vector<unsigned> answer = find_path_between_intersections(starting, 
+                                                                      first,
+                                                                      turn_penalty);
+    
+    info[first_index] = 1;
+    
+    starting = first;
+    
+    
+    for(unsigned i = 0; i < length_delivery*2 + 2; i++){
+        
+        double temp_time_seg = 1000000;
+        unsigned next;
+        std::vector<unsigned> shorest;
+        unsigned index_of_info;
+        
+         bool if_pushback = false;
+        
+        
+        
+        for(unsigned j = 0; j < length_delivery; j++){
+            
+            std::vector<unsigned> temp_path;
+            
+            double time;
+            
+           if_pushback = false;
+     
+           
+            if(info[j] == 0){
+                
+          
+              time = length_ptp(starting, deliveries[j].pickUp);
+            
+                if(time < temp_time_seg && time != 0){
+                    temp_time_seg = time;
+                    shorest = temp_path;
+                    next = deliveries[j].pickUp;
+                    index_of_info = j;
+                
+                }
+              
+                if_pushback = true;
+                
+            }
+            else if(info[j] == 1){
+                
+
+                
+                
+                time = length_ptp(starting, deliveries[j].dropOff);
+            
+                if(time < temp_time_seg&& time != 0){
+                    temp_time_seg = time;
+                    shorest = temp_path;
+                    next = deliveries[j].dropOff;
+                    index_of_info = j;
+                
+                }
+             
+                if_pushback = true;
+   
+            }
+
+        }
+         
+        
+        
+        if(if_pushback){
+            
+            shorest = find_path_between_intersections(starting, 
+                                                      next,
+                                                      turn_penalty);
+            
+            
+            starting = next;//set  the next point to be starting
+        
+            if(info[index_of_info] == 0){
+                info[index_of_info] = 1;
+            }
+            else if(info[index_of_info] == 1){
+                info[index_of_info] = 2;
+            }
+        
+            for(unsigned k = 0; k < shorest.size(); k++){
+                answer.push_back(shorest[k]);
+            }
+     
+        }
+     
+    }
+    
+    
+    temp_min = 1000000;
+  //  unsigned ending_depot;
+    std::vector<unsigned> ending_path;
+    
+    for(unsigned i = 0; i < length_depot; i++){
+        //    unsigned depot = depots[i];
+       
+            std::vector<unsigned> temp_path = find_path_between_intersections(starting, 
+                                                                              depots[i],
+                                                                              turn_penalty);
+            
+            double time = compute_path_travel_time(temp_path, 
+                                     turn_penalty);
+            
+            if(time < temp_min){
+                temp_min = time;
+                ending_path = temp_path;
+                
+                
+            }
+        
+               
+    }
+    
+    for(unsigned i = 0; i < ending_path.size(); i++){
+        answer.push_back(ending_path[i]);
+    }
+    
+    return answer;
+    
+    
+}
+
+
+*/
+
+/*
+std::vector<unsigned> traveling_courier(const std::vector<DeliveryInfo>& deliveries,
+                                        const std::vector<unsigned>& depots,
+                                        const float turn_penalty){
+    
+   // bool timeout = false;
+    
+    
+    
+    unsigned length_depot = depots.size();
+    
+    unsigned length_delivery = deliveries.size();
+    
+    std::vector<unsigned> info;
+    
+    for(unsigned i = 0; i < length_delivery; i++){
+        info.push_back(0);
+    }
+    
+    double temp_min = 100000000000000;
+    
+    unsigned starting = -1;
+    
+    unsigned first = -1;
+    
+    unsigned first_index;
+    
+
+        unsigned depot = depots[0];
+        
+        
+        
+        for(unsigned j = 0; j < length_delivery; j++){
+            std::vector<unsigned> temp_path = find_path_between_intersections(depot, 
+                                                                              deliveries[j].pickUp,
+                                                                              turn_penalty);
+            
+            double time = compute_path_travel_time(temp_path, 
+                                     turn_penalty);
+            
+            if(time < temp_min){
+                temp_min = time;
+                starting = depot;
+                first = deliveries[j].pickUp;
+                first_index = j;
+                
+            }
+        }
+              
+   
+    
+    
+    std::vector<unsigned> answer = find_path_between_intersections(starting, 
+                                                                      first,
+                                                                      turn_penalty);
+    
+    info[first_index] = 1;
+    
+    starting = first;
+    
+    
+    for(unsigned i = 0; i < length_delivery * 2 + 1; i++){
+       // auto const startTime = std::chrono::high_resolution_clock::now();
+        double temp_time_seg = 10000000;
+        unsigned next;
+        std::vector<unsigned> shorest;
+        unsigned index_of_info;
+        
+         bool if_pushback = false;
+         int count = 0;
+        
+        
+        for(unsigned j = 0; j < length_delivery ; j++){
+            
+           // std::vector<unsigned> temp_path;
+            
+            double time;
+            
+            if_pushback = false;
+
+            if(info[j] == 0){
+                
+//              temp_path = find_path_between_intersections(starting, 
+//                                                            deliveries[j].pickUp,
+//                                                            turn_penalty);
+//                
+//                
+//              time = compute_path_travel_time(temp_path, 
+//                                     turn_penalty);
+//            
+//              
+              time = length_ptp(starting , deliveries[j].pickUp );
+              
+              
+                if(time < temp_time_seg){
+                    temp_time_seg = time;
+                  //  shorest = temp_path;
+                    next = deliveries[j].pickUp;
+                    index_of_info = j;
+                
+                }
+              
+                if_pushback = true;
+                
+                count++;
+                
+            }
+            else if(info[j] == 1){
+                
+//                temp_path = find_path_between_intersections(starting, 
+//                                                            deliveries[j].dropOff,
+//                                                            turn_penalty);
+//                
+//                time = compute_path_travel_time(temp_path, 
+//                                     turn_penalty);
+                
+                
+              time = length_ptp(starting , deliveries[j].dropOff );
+            
+                if(time < temp_time_seg){
+                    temp_time_seg = time;
+                    //shorest = temp_path;
+                    next = deliveries[j].dropOff;
+                    index_of_info = j;
+                
+                }
+             
+                if_pushback = true;
+                count++;
+   
+            }
+            
+            
+            
+//         auto const currentTime = std::chrono::high_resolution_clock::now();
+//         auto const wallClock = std::chrono::duration_cast<std::chrono::nanoseconds> (currentTime - startTime);
+//         if (wallClock.count() > 0.9 * 30 / length_delivery) break;
+//            
+//            
+            
+            
+
+        }
+         
+        
+        
+        if(if_pushback){
+            
+            shorest = find_path_between_intersections(starting, 
+                                                            next,
+                                                            turn_penalty);
+            
+            
+            starting = next;//set  the next point to be starting
+        
+            if(info[index_of_info] == 0){
+                info[index_of_info] = 1;
+            }
+            else if(info[index_of_info] == 1){
+                info[index_of_info] = 2;
+            }
+        
+            for(unsigned k = 0; k < shorest.size(); k++){
+                answer.push_back(shorest[k]);
+            }
+     
+        }
+     
+         
+         
+         
+         
+         
+         
+    }
+    
+    
+    temp_min = 1000000;
+//    unsigned ending_depot;
+    std::vector<unsigned> ending_path;
+    
+    for(unsigned i = 0; i < length_depot; i++){
+        //    unsigned depot = depots[i];
+       
+            std::vector<unsigned> temp_path = find_path_between_intersections(starting, 
+                                                                              depots[i],
+                                                                              turn_penalty);
+            
+            double time = compute_path_travel_time(temp_path, 
+                                     turn_penalty);
+            
+            if(time < temp_min && time != 0){
+                temp_min = time;
+                ending_path = temp_path;
+                
+                
+            }
+        
+               
+    }
+    
+    for(unsigned i = 0; i < ending_path.size(); i++){
+        answer.push_back(ending_path[i]);
+    }
+    
+    return answer;
+    
+    
+    
+    
+    
+}
+
+*/
+
+/*
+std::vector<unsigned> traveling_courier(const std::vector<DeliveryInfo>& deliveries,
+                                        const std::vector<unsigned>& depots,
+                                        const float turn_penalty){
+    
+    //auto const currentTime = std::chrono::high_resolution_clock::now();
+    
+    
+//         auto const wallClock = std::chrono::duration_cast<std::chrono::nanoseconds> (currentTime - startTime);
+//         if (wallClock.count() > 0.9 * 30 / length_delivery) break;
+    
+    
+    
+    
+    std::srand((int)time(0));
+    
+    unsigned length_depot = depots.size();
+    
+    unsigned length_delivery = deliveries.size();
+    
+    std::vector<unsigned> info;
+    
+    std::vector<unsigned> reference;
+    
+    for(unsigned i = 0; i < length_delivery; i++){
+        reference.push_back(i);
+        info.push_back(0);
+    }
+    
+    
+    
+    double temp_min = 100000000;
+    
+    unsigned starting = -1;
+    
+    unsigned first = -1;
+    
+    unsigned first_index;
+    
+    unsigned depot = depots[0];
+        
+    bool timeout = false;
+        
+    for(unsigned j = 0; j < length_delivery; j++){
+            std::vector<unsigned> temp_path = find_path_between_intersections(depot, 
+                                                                              deliveries[j].pickUp,
+                                                                              turn_penalty);
+            
+            double time = compute_path_travel_time(temp_path, 
+                                     turn_penalty);
+            
+            if(time < temp_min){
+                temp_min = time;
+                starting = depot;
+                first = deliveries[j].pickUp;
+                first_index = j;
+                
+            }
+    }
+              
+        
+       
+    std::vector<unsigned> answer = find_path_between_intersections(starting, 
+                                                                      first,
+                                                                      turn_penalty);
+    
+    info[first_index] = 1;
+    
+    starting = first;
+
+    
+    
+    bool if_push = false;
+     
+     
+     while(reference.size() > 0){
+         
+         unsigned index_of_info;
+         
+         int r = (rand() % reference.size()); 
+         
+         // rand()/(100)
+         
+         
+         std::vector<unsigned> temp_path;
+         
+         unsigned next;
+
+         if_push = false;
+         
+          if(info[reference[r]] == 0){
+                
+              temp_path = find_path_between_intersections(starting, 
+                                                            deliveries[reference[r]].pickUp,
+                                                            turn_penalty);
+                
+                
+//              time = compute_path_travel_time(temp_path, 
+//                                     turn_penalty);
+              
+                if_push = true;
+                next = deliveries[reference[r]].pickUp;
+                index_of_info = reference[r];
+                
+            }
+            else if(info[reference[r]] == 1){
+                
+                temp_path = find_path_between_intersections(starting, 
+                                                            deliveries[reference[r]].dropOff,
+                                                            turn_penalty);
+                
+//                time = compute_path_travel_time(temp_path, 
+//                                     turn_penalty);
+            
+                if_push = true;
+                next = deliveries[reference[r]].dropOff;
+                index_of_info = reference[r];
+   
+            }
+         
+         
+         
+         if(if_push){
+             starting = next;//set  the next point to be starting
+        
+            if(info[index_of_info] == 0){
+                info[index_of_info] = 1;
+            }
+            else if(info[index_of_info] == 1){
+                info[index_of_info] = 2;
+                reference.erase(reference.begin() + index_of_info + 1);
+            }
+        
+            for(unsigned k = 0; k < temp_path.size(); k++){
+                answer.push_back(temp_path[k]);
+            }
+             
+         }
+
+     }
+    
+    
+    
+    
+    temp_min = 1000000;
+    unsigned ending_depot;
+    std::vector<unsigned> ending_path;
+    
+    for(unsigned i = 0; i < length_depot; i++){
+        //    unsigned depot = depots[i];
+       
+            std::vector<unsigned> temp_path = find_path_between_intersections(starting, 
+                                                                              depots[i],
+                                                                              turn_penalty);
+            
+            double time = compute_path_travel_time(temp_path, 
+                                     turn_penalty);
+            
+            if(time < temp_min){
+                temp_min = time;
+                ending_path = temp_path;
+                
+                
+            }
+        
+               
+    }
+    
+    for(unsigned i = 0; i < ending_path.size(); i++){
+        answer.push_back(ending_path[i]);
+    }
+    
+    return answer;
+    
+    
+    while(!timeout){
+        
+        double temp_time_seg = 10000000;
+        unsigned next;
+        std::vector<unsigned> shorest;
+        unsigned index_of_info;
+        
+         bool if_pushback = false;
+         int count = 0;
+        
+        
+        for(unsigned j = 0; j < length_delivery; j++){
+            
+            std::vector<unsigned> temp_path;
+            
+            double time;
+            
+            
+            
+         
+            if(info[j] == 0){
+                
+              temp_path = find_path_between_intersections(starting, 
+                                                            deliveries[j].pickUp,
+                                                            turn_penalty);
+                
+                
+              time = compute_path_travel_time(temp_path, 
+                                     turn_penalty);
+            
+                if(time < temp_time_seg){
+                    temp_time_seg = time;
+                    shorest = temp_path;
+                    next = deliveries[j].pickUp;
+                    index_of_info = j;
+                
+                }
+              
+                if_pushback = true;
+                
+                count++;
+                
+            }
+            else if(info[j] == 1){
+                
+                temp_path = find_path_between_intersections(starting, 
+                                                            deliveries[j].dropOff,
+                                                            turn_penalty);
+                
+                time = compute_path_travel_time(temp_path, 
+                                     turn_penalty);
+            
+                if(time < temp_time_seg){
+                    temp_time_seg = time;
+                    shorest = temp_path;
+                    next = deliveries[j].dropOff;
+                    index_of_info = j;
+                
+                }
+             
+                if_pushback = true;
+                count++;
+   
+            }
+            
+            
+            
+//         auto const currentTime = std::chrono::high_resolution_clock::now();
+//         auto const wallClock = std::chrono::duration_cast<std::chrono::nanoseconds> (currentTime - startTime);
+//         if (wallClock.count() > 0.9 * 30 / length_delivery) break;
+//            
+//            
+            
+            
+
+        }
+         
+        
+        
+        if(if_pushback){
+            
+            starting = next;//set  the next point to be starting
+        
+            if(info[index_of_info] == 0){
+                info[index_of_info] = 1;
+            }
+            else if(info[index_of_info] == 1){
+                info[index_of_info] = 2;
+            }
+        
+            for(unsigned k = 0; k < shorest.size(); k++){
+                answer.push_back(shorest[k]);
+            }
+     
+        }
+     
+         
+         
+         
+         
+        
+    }
+    
+    
+    
+
+		
+    
+    
+    
+}
+
+*/
+
+double length_ptp(unsigned a, unsigned b){
+    // change degree to radian
+    
+    
+    LatLon point1 = getIntersectionPosition(a);
+    LatLon point2 = getIntersectionPosition(b);
+    
+    double lat_avg = 0.017453292519943295769236907684886 * (point1.lat() + point2.lat())/2;
+    
+    // x = lon * cos(lat_avg)
+    double x1 = 0.017453292519943295769236907684886 * point1.lon() * cos(lat_avg);
+    double x2 = 0.017453292519943295769236907684886 * point2.lon() * cos(lat_avg);
+    // y = lat
+    double y1 = 0.017453292519943295769236907684886 * point1.lat();
+    double y2 = 0.017453292519943295769236907684886 * point2.lat();
+    
+    // d = R * sqrt((y1-y2)^2 + (x1-x2)^2)
+    return 6372797.560856 * sqrt((y2-y1)*(y2-y1) + (x2-x1)*(x2-x1));
+}
+
+/*
+std::vector<unsigned> traveling_courier(const std::vector<DeliveryInfo>& deliveries,
+                                        const std::vector<unsigned>& depots,
+                                        const float turn_penalty){
+    
+    
+    std::srand((int)time(0));
+    
+    unsigned length_depot = depots.size();
+    
+    unsigned length_delivery = deliveries.size();
+    
+    std::vector<unsigned> info;
+    
+    std::vector<unsigned> reference;
+    
+    std::vector<unsigned> reference_unchanged;
+    
+    std::vector<unsigned> unsigned_answer;
+    
+    for(unsigned i = 0; i < length_delivery; i++){
+        reference_unchanged.push_back(i);
+        info.push_back(0);
+    }
+    
+    
+    
+    double length_min = 100000000;
+    
+    unsigned starting = -1;
+    
+    unsigned first = -1;
+    
+    unsigned first_index;
+    
+    
+    
+    unsigned depot = depots[0];
+        
+//   
+//    if(depots.size() > 1){
+//        depot = depots[1];
+//    }
+//    else{
+//        depot = depots[0];
+//    }
+//    
+    
+
+    for(unsigned j = 0; j < length_delivery; j++){
+        
+        
+     
+            double length = length_ptp(depot, deliveries[j].pickUp);
+            
+            
+            if(length < length_min && length != 0){
+                length_min = length;
+                
+                first = deliveries[j].pickUp;
+                first_index = j;
+                
+            }
+    }
+    
+    if(find_path_between_intersections(depot,first,turn_penalty).size() == 0){
+        depot = depots[1];
+        for(unsigned j = 0; j < length_delivery; j++){
+        
+        
+     
+            double length = length_ptp(depot, deliveries[j].pickUp);
+            
+            
+            if(length < length_min && length != 0){
+                length_min = length;
+                
+                first = deliveries[j].pickUp;
+                first_index = j;
+                
+            }
+    }
+    }
+              
+    
+    
+    double total_length = 1000000;
+    
+    double temp_length = 0;
+    
+    
+    
+    
+    for(int rr = 0 ; rr < 1; rr ++){
+        
+         total_length = 1000000;
+    
+     temp_length = 0;
+        
+    reference = reference_unchanged;    
+        
+    unsigned_answer.clear();
+    
+    starting = depot;
+    
+    unsigned_answer.push_back(depot);
+    
+    info[first_index] = 1;
+    
+    starting = first;
+    
+    unsigned_answer.push_back(first);
+
+    
+    
+    while(reference.size() > 0){
+        
+        
+        int r = (rand() % reference.size()); 
+        
+        
+        unsigned index_of_info;
+        
+        bool if_push = false;
+        
+        unsigned next;
+        
+        if(info[reference[r]] == 0){
+                
+//              temp_path = find_path_between_intersections(starting, 
+//                                                            deliveries[reference[r]].pickUp,
+//                                                            turn_penalty);
+                
+                
+//              time = compute_path_travel_time(temp_path, 
+//                                     turn_penalty);
+              
+                temp_length+= length_ptp(starting, deliveries[reference[r]].pickUp);
+              
+             //   if_push = true;
+             //   next = deliveries[reference[r]].pickUp;
+                index_of_info = reference[r];
+                info[index_of_info] = 1;
+                next = deliveries[index_of_info].pickUp;
+                if_push = true;
+                
+                
+            }
+            else if(info[reference[r]] == 1){
+                
+//                temp_path = find_path_between_intersections(starting, 
+//                                                            deliveries[reference[r]].dropOff,
+//                                                            turn_penalty);
+                
+//                time = compute_path_travel_time(temp_path, 
+//                                     turn_penalty);
+            
+             //   if_push = true;
+                
+                temp_length+= length_ptp(starting, deliveries[reference[r]].dropOff);
+
+              //  next = deliveries[reference[r]].dropOff;
+                index_of_info = reference[r];
+                info[index_of_info] = 2;
+                reference.erase(reference.begin() + r );
+                next = deliveries[index_of_info].dropOff;
+
+                if_push = true;   
+            }
+         
+        
+        if(if_push){
+            
+            starting = next;//set  the next point to be starting
+            unsigned_answer.push_back(next);
+        }
+        
+      
+
+        
+    }
+   
+    
+    }
+    
+    
+    
+    
+     length_min = 100000000;
+
+     
+     unsigned ending;
+     
+     
+//       if(depots.size() > 1){
+//        ending = depots[1];
+//    }
+//    else{
+//        ending = depots[0];
+//    }
+//     
+     
+     
+    
+ 
+        for(unsigned i = 0; i < length_depot; i++){
+        //    unsigned depot = depots[i];
+            std::vector<unsigned> temp_path = find_path_between_intersections(starting, 
+                                                                              depots[i],
+                                                                              turn_penalty);
+            
+            double length = compute_path_travel_time(temp_path, 
+                                     turn_penalty);
+            
+    //        double length = length_ptp(depot, deliveries[j].pickUp);
+            
+            
+            if(length < length_min && length != 0){
+                length_min = length;
+                depot = depots[i];
+                
+                ending = depots[i];
+            }
+            
+         
+        
+               
+        }
+     
+     
+        
+        
+    std::vector<unsigned> final_answer;
+    
+    
+    unsigned_answer.push_back(ending);
+    
+    
+    
+    for(unsigned  i = 0 ; i < unsigned_answer.size() - 1; i++ ){
+        
+        std::vector<unsigned> temp_path = find_path_between_intersections(unsigned_answer[i], 
+                                                            unsigned_answer[i+1],
+                                                            turn_penalty);
+        
+        for(unsigned j = 0; j < temp_path.size(); j++){
+            final_answer.push_back(temp_path[j]);
+        }
+    }
+    
+    
+    return final_answer;
+    
+    
+}
+*/
+
+
+/*
+std::vector<unsigned> traveling_courier(const std::vector<DeliveryInfo>& deliveries,
+                                        const std::vector<unsigned>& depots,
+                                        const float turn_penalty){
+    
+    
+    
+    
+}
+*/ 
+
+/*
+std::vector<unsigned> traveling_courier(const std::vector<DeliveryInfo>& deliveries,
+                                        const std::vector<unsigned>& depots,
+                                        const float turn_penalty){//greedy
+    
+    
+    unsigned length_depot = depots.size();
+    
+    unsigned length_delivery = deliveries.size();
+    
+    std::vector<unsigned> info;
+    
+    std::vector<unsigned> reference;
+    
+    //std::vector<unsigned> reference_unchanged;
+    
+    std::vector<unsigned> unsigned_answer;
+    
+    for(unsigned i = 0; i < length_delivery; i++){
+        reference.push_back(i);
+        info.push_back(0);
+    }
+    
+    
+    
+    double length_min = 100000000;
+    
+    unsigned starting = -1;
+    
+    unsigned first = -1;
+    
+    unsigned first_index;
+    
+    unsigned depot = depots[0];
+
+    
+    for(unsigned j = 0; j < length_delivery; j++){
+        
+        
+     
+            double length = length_ptp(depot, deliveries[j].pickUp);
+            
+            
+            if(length < length_min && length != 0){
+                length_min = length;
+                
+                first = deliveries[j].pickUp;
+                first_index = j;
+                
+            }
+    }
+    
+    
+    
+//     if(find_path_between_intersections(depot,first,turn_penalty).size() == 0){
+//        depot = depots[1];
+//        for(unsigned j = 0; j < length_delivery; j++){
+//        
+//        
+//     
+//            double length = length_ptp(depot, deliveries[j].pickUp);
+//            
+//            
+//            if(length < length_min && length != 0){
+//                length_min = length;
+//                
+//                first = deliveries[j].pickUp;
+//                first_index = j;
+//                
+//            }
+//    }
+//    }
+    
+
+    
+    
+    
+    unsigned_answer.push_back(depot);
+    
+    info[first_index] = 1;
+    
+    starting = first;
+    
+    unsigned_answer.push_back(first);
+    
+    
+    double temp_min = 100000000;
+    double temp_length = 0;
+    unsigned index_of_info;
+    unsigned index_of_ref;
+    unsigned next;
+    bool if_push = false;
+    
+    
+     for(unsigned k = 0; k < length_delivery * 2 + 2; k++ ){
+        
+        temp_min = 1000000000;
+        temp_length = 0;
+        if_push = false;
+
+        
+        for(unsigned i = 0; i < length_delivery; i++ ){
+            
+            
+            if(info[i] == 0){
+                
+                temp_length = length_ptp(starting, deliveries[i].pickUp);
+              
+             //   if_push = true;
+             //   next = deliveries[reference[r]].pickUp;
+                
+                if(temp_length < temp_min && temp_length != 0){
+                    temp_min = temp_length;
+                    index_of_info = i;
+                    info[index_of_info] = 1;
+                    next = deliveries[index_of_info].pickUp;
+                    index_of_ref = i;
+                    if_push = true;
+                    
+                }
+                
+                
+                
+            }
+            else if(info[i] == 1){
+                
+                temp_length = length_ptp(starting, deliveries[i].dropOff);
+              
+             //   if_push = true;
+             //   next = deliveries[reference[r]].pickUp;
+                
+                if(temp_length < temp_min && temp_length != 0){
+                    temp_min = temp_length;
+                    index_of_info = i;
+                    info[index_of_info] = 2;
+                    next = deliveries[index_of_info].dropOff;
+                    index_of_ref = i;
+                    if_push = true;
+                    
+                }
+            }
+            
+            
+            
+         
+        }
+        
+        
+        if(if_push){
+            unsigned_answer.push_back(next);
+            starting = next;
+        }
+       
+            
+//        if(info[index_of_info] == 2){
+//            reference.erase(reference.begin() + index_of_ref + 1);
+//        }
+        
+        
+    }
+    
+    
+    unsigned_answer.push_back(depots[0]);
+    
+    std::vector<unsigned> final_answer;
+    
+    
+    for(unsigned  i = 0 ; i < unsigned_answer.size() - 1; i++ ){
+        
+        std::vector<unsigned> temp_path = find_path_between_intersections(unsigned_answer[i], 
+                                                            unsigned_answer[i+1],
+                                                            turn_penalty);
+        
+        for(unsigned j = 0; j < temp_path.size(); j++){
+            final_answer.push_back(temp_path[j]);
+        }
+    }
+    
+    
+    return final_answer;
+   
+    
+    
+    
+}
+ */
+
+/*
+
+std::vector<unsigned> traveling_courier(const std::vector<DeliveryInfo>& deliveries,
+                                        const std::vector<unsigned>& depots,
+                                        const float turn_penalty){//greedy
+    
+        
+     
+    unsigned length_depot = depots.size();
+    
+    unsigned length_delivery = deliveries.size();
+    
+    int reference = length_delivery;
+    
+    std::vector<unsigned> info;
+            
+    std::vector<unsigned> unsigned_answer;
+    
+    for(unsigned i = 0; i < length_delivery; i++){
+        info.push_back(0);
+    }
+    
+    unsigned depot = depots[0];
+    
+    
+    
+    double min_length = 1000000;
+    double temp_length ;
+    
+    unsigned first_point;
+    unsigned first_point_index;
+
+    
+    for(unsigned i  = 0; i < length_delivery; i++){
+        
+        temp_length = length_ptp(depot, deliveries[i].pickUp);
+        
+        if(temp_length < min_length ){
+            min_length = temp_length;
+            
+            first_point = deliveries[i].pickUp;
+            
+            first_point_index = i;
+        }
+        
+    }
+    
+    
+    unsigned_answer.push_back(depot);
+    unsigned_answer.push_back(first_point);
+    
+    info[first_point_index] = 1;
+    
+    unsigned starting;
+    
+    starting = first_point;
+    
+    unsigned next;
+    
+    
+    
+    while(reference != 0){
+        
+        
+        double min_seg_length = 10000000;
+        
+        double temp_seg_length = 0;
+        
+        unsigned next_index;
+        
+        bool if_push = false;
+        
+        int count = 5;
+        
+        for(unsigned i = 0; i < length_delivery && count > 0; i ++){
+            
+            
+            
+            
+            if(info[i] == 0){
+                
+                temp_seg_length = length_ptp(starting, deliveries[i].pickUp);
+                
+                if(temp_seg_length < min_seg_length){
+                    min_seg_length = temp_seg_length;
+                    info[i] = 1;
+                    next = deliveries[i].pickUp;
+                    next_index = i;
+                    if_push = true;
+                    count --;
+                }
+                
+                
+                
+                
+            }
+            else if(info[i] == 1){
+                
+                
+                
+                temp_seg_length = length_ptp(starting, deliveries[i].dropOff);
+                
+                 if(temp_seg_length < min_seg_length){
+                    min_seg_length = temp_seg_length;
+                    info[i] = 2;
+                    next = deliveries[i].dropOff;
+                    next_index = i;
+                    if_push = true;
+                    count --;
+                    
+                }
+            
+            }
+          
+        }
+        
+        if(if_push){
+            unsigned_answer.push_back(next);
+            starting = next;
+            
+            
+            if(info[next_index] == 2){
+                reference --;
+            }
+        }
+        
+        
+        
+    }
+    
+    unsigned_answer.push_back(depots[0]);
+    
+    
+    
+    std::vector<unsigned> final_answer;
+    
+    
+    for(unsigned  i = 0 ; i < unsigned_answer.size() - 1; i++ ){
+        
+        std::vector<unsigned> temp_path = find_path_between_intersections(unsigned_answer[i], 
+                                                            unsigned_answer[i+1],
+                                                            turn_penalty);
+        
+        for(unsigned j = 0; j < temp_path.size(); j++){
+            final_answer.push_back(temp_path[j]);
+        }
+    }
+    
+    
+    return final_answer;
+    
+    
+    
+}
+ */
+
+/*
+std::vector<unsigned> traveling_courier(const std::vector<DeliveryInfo>& deliveries,
+                                        const std::vector<unsigned>& depots,
+                                        const float turn_penalty){
+    
+   // bool timeout = false;
+    
+    
+    
+    unsigned length_depot = depots.size();
+    
+    unsigned length_delivery = deliveries.size();
+    
+    std::vector<unsigned> info;
+    
+    for(unsigned i = 0; i < length_delivery; i++){
+        info.push_back(0);
+    }
+    
+    double temp_min = 100000000;
+    
+    unsigned starting = -1;
+    
+    unsigned first = -1;
+    
+    unsigned first_index;
+    
+
+        unsigned depot = depots[0];
+        
+        
+        
+        for(unsigned j = 0; j < length_delivery; j++){
+            std::vector<unsigned> temp_path = find_path_between_intersections(depot, 
+                                                                              deliveries[j].pickUp,
+                                                                              turn_penalty);
+            
+            double time = compute_path_travel_time(temp_path, 
+                                     turn_penalty);
+            
+            if(time < temp_min){
+                temp_min = time;
+                starting = depot;
+                first = deliveries[j].pickUp;
+                first_index = j;
+                
+            }
+        }
+              
+   
+    
+    
+    std::vector<unsigned> answer = find_path_between_intersections(starting, 
+                                                                      first,
+                                                                      turn_penalty);
+    
+    info[first_index] = 1;
+    
+    starting = first;
+    
+    
+    for(unsigned i = 0; i < length_delivery * 2 + 2; i++){
+       // auto const startTime = std::chrono::high_resolution_clock::now();
+        double temp_time_seg = 10000000;
+        unsigned next;
+        std::vector<unsigned> shorest;
+        unsigned index_of_info;
+        
+         bool if_pushback = false;
+         int count = 0;
+        
+        
+        for(unsigned j = 0; j < length_delivery && count < 5; j++){
+            
+            std::vector<unsigned> temp_path;
+            
+            double time;
+            
+            if_pushback = false;
+
+            if(info[j] == 0){
+                
+              temp_path = find_path_between_intersections(starting, 
+                                                            deliveries[j].pickUp,
+                                                            turn_penalty);
+                
+                
+              time = compute_path_travel_time(temp_path, 
+                                     turn_penalty);
+            
+                if(time < temp_time_seg){
+                    temp_time_seg = time;
+                    shorest = temp_path;
+                    next = deliveries[j].pickUp;
+                    index_of_info = j;
+                
+                }
+              
+                if_pushback = true;
+                
+                count++;
+                
+            }
+            else if(info[j] == 1){
+                
+                temp_path = find_path_between_intersections(starting, 
+                                                            deliveries[j].dropOff,
+                                                            turn_penalty);
+                
+                time = compute_path_travel_time(temp_path, 
+                                     turn_penalty);
+            
+                if(time < temp_time_seg){
+                    temp_time_seg = time;
+                    shorest = temp_path;
+                    next = deliveries[j].dropOff;
+                    index_of_info = j;
+                
+                }
+             
+                if_pushback = true;
+                count++;
+   
+            }
+            
+            
+            
+//         auto const currentTime = std::chrono::high_resolution_clock::now();
+//         auto const wallClock = std::chrono::duration_cast<std::chrono::nanoseconds> (currentTime - startTime);
+//         if (wallClock.count() > 0.9 * 30 / length_delivery) break;
+//            
+//            
+            
+            
+
+        }
+         
+        
+        
+        if(if_pushback){
+            
+            starting = next;//set  the next point to be starting
+        
+            if(info[index_of_info] == 0){
+                info[index_of_info] = 1;
+            }
+            else if(info[index_of_info] == 1){
+                info[index_of_info] = 2;
+            }
+        
+            for(unsigned k = 0; k < shorest.size(); k++){
+                answer.push_back(shorest[k]);
+            }
+     
+        }
+     
+         
+         
+         
+         
+         
+         
+    }
+    
+    
+    temp_min = 1000000;
+    unsigned ending_depot;
+    std::vector<unsigned> ending_path;
+    
+    for(unsigned i = 0; i < length_depot; i++){
+        //    unsigned depot = depots[i];
+       
+            std::vector<unsigned> temp_path = find_path_between_intersections(starting, 
+                                                                              depots[i],
+                                                                              turn_penalty);
+            
+            double time = compute_path_travel_time(temp_path, 
+                                     turn_penalty);
+            
+            if(time < temp_min){
+                temp_min = time;
+                ending_path = temp_path;
+                
+                
+            }
+        
+               
+    }
+    
+    for(unsigned i = 0; i < ending_path.size(); i++){
+        answer.push_back(ending_path[i]);
+    }
+    
+    return answer;
+    
+    
+    
+    
+    
+}
+ * */
+
+/*
+
+std::vector<unsigned> traveling_courier(const std::vector<DeliveryInfo>& deliveries,
+                                        const std::vector<unsigned>& depots,
+                                        const float turn_penalty){//greedy
+    
+        
+     
+    unsigned length_depot = depots.size();
+    
+    unsigned length_delivery = deliveries.size();
+    
+    int reference = length_delivery;
+    
+    std::vector<unsigned> info;
+            
+    std::vector<unsigned> unsigned_answer;
+    
+    for(unsigned i = 0; i < length_delivery; i++){
+        info.push_back(0);
+    }
+    
+    unsigned depot;
+    
+    
+//    
+//    if(length_depot > 1){
+//          depot = depots[1];
+//    }
+//    else{
+//          depot = depots[0];
+//    }
+//
+//    
+    
+    
+    double min_length = 1000000000;
+    double temp_length ;
+    
+    unsigned first_point;
+    unsigned first_point_index;
+
+    std::vector<unsigned> temp_seg;
+    
+    
+    for(unsigned k = 0; k < length_depot; k++){
+    for(unsigned i  = 0; i < length_delivery; i++){
+        
+//        temp_seg = find_path_between_intersections(depots[k], 
+//                                                    deliveries[i].pickUp,
+//                                                      turn_penalty);
+//            
+//            temp_length = compute_path_travel_time(temp_seg, 
+//                                     turn_penalty);
+//            
+//            
+            temp_length = length_ptp(depots[k], deliveries[i].pickUp);
+            
+        
+        if(temp_length < min_length && temp_length != 0 ){
+            
+            
+            if(find_path_between_intersections(depots[k], deliveries[i].pickUp,turn_penalty).size() > 0){
+                
+                min_length = temp_length;
+            
+                first_point = deliveries[i].pickUp;
+                depot = depots[k];
+                first_point_index = i;
+            }
+            
+        }
+        
+    }
+    }
+    
+    unsigned_answer.push_back(depot);
+    unsigned_answer.push_back(first_point);
+    
+    info[first_point_index] = 1;
+    
+    unsigned starting;
+    
+    starting = first_point;
+    
+    unsigned next;
+    
+    
+    
+    while(reference != 0){
+        
+        
+        double min_seg_length = 10000000;
+        
+        double temp_seg_length = 0;
+        
+        unsigned next_index = 0;
+        
+        bool if_push = false;
+        
+
+        
+        for(unsigned i = 0; i < length_delivery; i ++){
+            
+            
+            
+            
+            if(info[i] == 0){
+                
+                temp_seg_length = length_ptp(starting, deliveries[i].pickUp);
+                
+                if(temp_seg_length < min_seg_length){
+                    min_seg_length = temp_seg_length;
+                    
+                    next = deliveries[i].pickUp;
+                    next_index = i;
+                    if_push = true;
+        
+                }
+                
+                
+                
+                
+            }
+            else if(info[i] == 1){
+                
+                
+                
+                temp_seg_length = length_ptp(starting, deliveries[i].dropOff);
+                
+                 if(temp_seg_length < min_seg_length){
+                    min_seg_length = temp_seg_length;
+                    
+                    next = deliveries[i].dropOff;
+                    next_index = i;
+                    if_push = true;
+              
+                    
+                }
+            
+            }
+          
+        }
+        
+        if(if_push){
+            unsigned_answer.push_back(next);
+            starting = next;
+            
+            
+            
+            
+            if(info[next_index] == 1){
+                reference --;
+                info[next_index] = 2;
+            }
+            else if(info[next_index] == 0){
+                info[next_index] = 1;
+            }
+            
+        }
+        
+        
+        
+    }
+    
+    min_length = 100000000;
+    
+    
+    for(unsigned l = 0; l < length_depot; l++){
+        
+      
+            
+            
+        temp_length = length_ptp(starting, depots[l]);
+            
+            
+        if(temp_length < min_length ){
+            
+            
+            if(find_path_between_intersections(starting, depots[l],turn_penalty).size() > 0){
+                depot = depots[l];
+                min_length = temp_length;
+            }
+            
+        }
+        
+        
+    }
+    
+    
+    unsigned_answer.push_back(depot);
+    
+    
+    
+    std::vector<unsigned> final_answer;
+    
+    
+    for(unsigned  i = 0 ; i < unsigned_answer.size() - 1; i++ ){
+        
+        std::vector<unsigned> temp_path = find_path_between_intersections(unsigned_answer[i], 
+                                                            unsigned_answer[i+1],
+                                                            turn_penalty);
+        
+        for(unsigned j = 0; j < temp_path.size(); j++){
+            final_answer.push_back(temp_path[j]);
+        }
+    }
+    
+    
+    return final_answer;
+    
+    
+    
+}
+
+*/
+
+std::vector<unsigned> traveling_courier(const std::vector<DeliveryInfo>& deliveries,
+                                        const std::vector<unsigned>& depots,
+                                        const float turn_penalty){//greedy
+    
+        
+    std::vector<std::vector<unsigned>> parents;
+     
+    unsigned length_depot = depots.size();
+    
+    unsigned length_delivery = deliveries.size();
+    
+    int reference = length_delivery;
+    
+    std::vector<unsigned> info;
+    
+    std::vector<unsigned> info_unchanged;
+
+            
+    std::vector<unsigned> unsigned_answer;
+    
+    std::vector<unsigned> empty_ref;
+    
+    std::vector<unsigned> id_of_deli;
+    
+    for(unsigned i = 0; i < length_delivery; i++){
+        info_unchanged.push_back(0);
+      //  id_of_deli.push_back(0);
+    }
+    
+    info = info_unchanged;
+    
+//    id_of_deli.push_back(10000000);
+    
+    unsigned depot;
+    
+    
+//    
+//    if(length_depot > 1){
+//          depot = depots[1];
+//    }
+//    else{
+//          depot = depots[0];
+//    }
+//
+//    
+    
+    
+    double min_length = 1000000000;
+    double temp_length ;
+    
+    unsigned first_point;
+    unsigned first_point_index;
+
+   // std::vector<unsigned> temp_seg;
+    
+    
+    for(unsigned k = 0; k < length_depot; k++){
+        reference = length_delivery;
+        id_of_deli = empty_ref;
+        id_of_deli.push_back(10000000);
+        min_length = 1000000000;
+        unsigned_answer = empty_ref;
+        
+        
+        info = info_unchanged;
+        
+        
+    for(unsigned i  = 0; i < length_delivery; i++){
+        
+//        temp_seg = find_path_between_intersections(depots[k], 
+//                                                    deliveries[i].pickUp,
+//                                                      turn_penalty);
+//            
+//            temp_length = compute_path_travel_time(temp_seg, 
+//                                     turn_penalty);
+//            
+//            
+            temp_length = length_ptp(depots[k], deliveries[i].pickUp);
+            
+        
+        if(temp_length < min_length && temp_length != 0 ){
+            
+            
+            if(find_path_between_intersections(depots[k], deliveries[i].pickUp,turn_penalty).size() > 0){
+                
+                min_length = temp_length;
+            
+                first_point = deliveries[i].pickUp;
+                depot = depots[k];
+                first_point_index = i;
+            }
+            
+        }
+        
+    }
+    
+    
+    unsigned_answer.push_back(depot);
+    unsigned_answer.push_back(first_point);
+    
+    info[first_point_index] = 1;
+    
+    id_of_deli.push_back(first_point_index);
+    
+    unsigned starting;
+    
+    starting = first_point;
+    
+    unsigned next;
+    
+    
+    
+    while(reference != 0){
+        
+        
+        double min_seg_length = 10000000;
+        
+        double temp_seg_length = 0;
+        
+        unsigned next_index = 0;
+        
+        bool if_push = false;
+        
+
+        
+        for(unsigned i = 0; i < length_delivery; i ++){
+            
+            
+            
+            
+            if(info[i] == 0){
+                
+                temp_seg_length = length_ptp(starting, deliveries[i].pickUp);
+                
+                if(temp_seg_length < min_seg_length){
+                    min_seg_length = temp_seg_length;
+                    
+                    next = deliveries[i].pickUp;
+                    next_index = i;
+                    if_push = true;
+        
+                }
+                
+                
+                
+                
+            }
+            else if(info[i] == 1){
+                
+                
+                
+                temp_seg_length = length_ptp(starting, deliveries[i].dropOff);
+                
+                 if(temp_seg_length < min_seg_length){
+                    min_seg_length = temp_seg_length;
+                    
+                    next = deliveries[i].dropOff;
+                    next_index = i;
+                    if_push = true;
+              
+                    
+                }
+            
+            }
+          
+        }
+        
+        if(if_push){
+            unsigned_answer.push_back(next);
+            starting = next;
+            
+            
+            id_of_deli.push_back(next_index);
+
+            
+            if(info[next_index] == 1){
+                reference --;
+                info[next_index] = 2;
+            }
+            else if(info[next_index] == 0){
+                info[next_index] = 1;
+            }
+            
+        }
+        
+        
+        
+    }
+    
+    min_length = 10000000000;
+    temp_length = 0;
+    
+    for(unsigned l = 0; l < length_depot; l++){
+        
+      
+            
+            
+        temp_length = length_ptp(starting, depots[l]);
+            
+            
+        if(temp_length < min_length ){
+            
+            
+            if(find_path_between_intersections(starting, depots[l],turn_penalty).size() > 0){
+                depot = depots[l];
+                min_length = temp_length;
+            }
+            
+        }
+        
+        
+    }
+    
+    
+    unsigned_answer.push_back(depot);
+    id_of_deli.push_back(10000000);
+    
+    parents.push_back(unsigned_answer);
+    
+    
+    }
+    
+    
+//    for(unsigned p = 0; p < 100; p++){
+//        
+//        
+//        for(unsigned g = 2;  g < unsigned_answer.size() - 6; g++){
+//            double current_ref_length = 0;
+//            double changed_length = 0;
+//            
+//            if(id_of_deli[g] != id_of_deli[g+1] && id_of_deli[g] != id_of_deli[g+2] && id_of_deli[g] != id_of_deli[g+3] &&
+//                 id_of_deli[g+1] != id_of_deli[g+3] && id_of_deli[g+2] != id_of_deli[g+3]){
+//                
+//                
+//                changed_length += length_ptp(unsigned_answer[g-1], unsigned_answer[g + 3]);
+//                changed_length += length_ptp(unsigned_answer[g+3], unsigned_answer[g + 1]);
+//                changed_length += length_ptp(unsigned_answer[g+1], unsigned_answer[g + 2]);
+//                changed_length += length_ptp(unsigned_answer[g + 2], unsigned_answer[g]);
+//                changed_length += length_ptp(unsigned_answer[g ], unsigned_answer[g+4]);
+//                
+//                for(unsigned h = 0; h < 5; h++){
+//                    current_ref_length += length_ptp(unsigned_answer[g-1 + h], unsigned_answer[g + h]);
+//                    
+//                }
+//                
+//                
+//                if(changed_length < current_ref_length){
+//                    
+//                    
+//                    unsigned temp =  unsigned_answer[g];
+//                    unsigned temp1 =  id_of_deli[g];
+//                    
+//                    unsigned_answer[g] = unsigned_answer[g + 3];
+//                    unsigned_answer[g + 3] = temp;
+//                    id_of_deli[g] = id_of_deli[g+3];
+//                    id_of_deli[g + 3] = temp1;
+//                }
+//                
+//                
+//                
+//            }
+//    
+//            
+//        }
+//     
+//    }
+    
+    
+    
+    
+
+    
+    
+    std::vector<unsigned> final_unsigned_answer;
+
+    
+    double min_distance = 0;
+    double temp_distance = 0;
+    
+    for(unsigned i = 0; i < parents.size(); i++){
+        temp_distance = 0;
+        for(unsigned j = 0; j < parents[i].size() - 1 ; j++){
+            temp_distance += length_ptp(parents[i][j], parents[i][j + 1]);
+            
+            
+        }
+        
+        if(temp_distance < min_distance || i == 0){
+            
+            if(i == 0){
+                final_unsigned_answer = parents[0];
+                min_distance = temp_distance;
+            }
+            else{
+                final_unsigned_answer = parents[i];
+                min_distance = temp_distance;
+            }
+            
+          
+        }
+        
+    }
+    
+    
+        
+//    unsigned_answer = final_unsigned_answer;
+//    
+//        
+//    for(unsigned p = 0; p < 100; p++){
+//        
+//        
+//        for(unsigned g = 2;  g < unsigned_answer.size() - 4; g++){
+//            double current_ref_length = 0;
+//            double changed_length = 0;
+//            
+//            if(id_of_deli[g] != id_of_deli[g+2] && id_of_deli[g + 1] != id_of_deli[g+2] && id_of_deli[g] != id_of_deli[g+1]){
+//                
+//                
+//                changed_length += length_ptp(unsigned_answer[g-1], unsigned_answer[g + 2]);
+//                changed_length += length_ptp(unsigned_answer[g+2], unsigned_answer[g + 1]);
+//                changed_length += length_ptp(unsigned_answer[g+1], unsigned_answer[g ]);
+//                changed_length += length_ptp(unsigned_answer[g], unsigned_answer[g + 3]);
+//                
+//                for(unsigned h = 0; h < 4; h++){
+//                    current_ref_length += length_ptp(unsigned_answer[g-1 + h], unsigned_answer[g + h]);
+//                    
+//                }
+//                
+//                if(changed_length < current_ref_length){
+//                    
+//                    
+//                    unsigned temp =  unsigned_answer[g];
+//                    unsigned temp1 =  id_of_deli[g];
+//                    
+//                    unsigned_answer[g] = unsigned_answer[g + 2];
+//                    unsigned_answer[g + 2] = temp;
+//                    id_of_deli[g] = id_of_deli[g+2];
+//                    id_of_deli[g + 2] = temp1;
+//                }
+//                
+//                
+//                
+//            }
+//    
+//            
+//        }
+//     
+//    }
+//    
+//    for(unsigned p = 0; p < 100; p++){
+//        
+//        
+//        for(unsigned g = 2;  g < unsigned_answer.size() - 3; g++){
+//            double current_ref_length = 0;
+//            double changed_length = 0;
+//            
+//            if(id_of_deli[g] != id_of_deli[g+1]){
+//                
+//                
+//                changed_length += length_ptp(unsigned_answer[g-1], unsigned_answer[g + 1]);
+//                changed_length += length_ptp(unsigned_answer[g+1], unsigned_answer[g]);
+//                changed_length += length_ptp(unsigned_answer[g], unsigned_answer[g + 2]);
+//                
+//                for(unsigned h = 0; h < 3; h++){
+//                    current_ref_length += length_ptp(unsigned_answer[g-1 + h], unsigned_answer[g + h]);
+//                    
+//                }
+//                
+//                if(changed_length < current_ref_length){
+//                    
+//                    
+//                    unsigned temp =  unsigned_answer[g];
+//                    unsigned_answer[g] = unsigned_answer[g + 1];
+//                    unsigned_answer[g + 1] = temp;
+//                    
+//                    unsigned temp1 =  id_of_deli[g];
+//                    id_of_deli[g] = id_of_deli[g + 1];
+//                    id_of_deli[g + 1] = temp1;
+//                    
+//                }
+//                
+//                
+//                
+//            }
+//            
+//        }
+//        
+//        
+//    }
+//    
+//    
+//  
+//     final_unsigned_answer = unsigned_answer ;
+
+    
+    
+    
+    std::vector<unsigned> final_answer;
+    
+    
+    for(unsigned  i = 0 ; i < final_unsigned_answer.size() - 1; i++ ){
+        
+        std::vector<unsigned> temp_path = find_path_between_intersections(final_unsigned_answer[i], 
+                                                            final_unsigned_answer[i+1],
+                                                            turn_penalty);
+        
+        for(unsigned j = 0; j < temp_path.size(); j++){
+            final_answer.push_back(temp_path[j]);
+        }
+    }
+    
+    
+    return final_answer;
+    
+    
+    
+}

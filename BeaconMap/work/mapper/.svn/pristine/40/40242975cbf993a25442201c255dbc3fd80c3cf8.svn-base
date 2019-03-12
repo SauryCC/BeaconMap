@@ -1,0 +1,241 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+#include "astar.h"
+#include "dataStructure.h"
+//#include "min_heap.h"
+#include <math.h>
+
+using namespace std;
+// global data structure
+extern dataStructure data_structure;
+extern double avg_lat; // average latitude
+
+
+
+double astar::calcG(aNode& curr, aNode& temp, double turn_penalty){
+    double parentG = curr.G;
+    double extraG = data_structure.segments_time[temp.parentSegment];
+
+    if(data_structure.streetsegmentinfo[curr.parentSegment].streetID != data_structure.streetsegmentinfo[temp.parentSegment].streetID){
+        extraG += turn_penalty;
+    }
+
+    return parentG + extraG;
+}
+
+
+std::vector<unsigned> astar::get_surround_segments(const aNode curr) const{
+
+          // INTSEG is the vector for intersection id -> according street segment id
+    std::vector<unsigned> surround_segments = data_structure.INTSEG[curr.index];
+    std::vector<unsigned> result_surround_segments;
+    for(std::vector<unsigned>::iterator it = surround_segments.begin(); it != surround_segments.end(); ++it){
+        
+        StreetSegmentInfo info = data_structure.streetsegmentinfo[*it];
+
+        // if street segment is one way and we have node for end point, then this street is not valid
+        if(info.oneWay && info.to == curr.index){
+            continue;
+        }
+        result_surround_segments.push_back(*it);
+    }
+    return result_surround_segments;
+}
+
+
+// return the StreetSegmentIndex that has min travel time between start and end node
+std::vector<unsigned> astar::find_path(aNode& start, aNode& end, double turn_penalty){
+    aNode start_node = aNode(start.index);
+    start_node.G = 0; // change start_node->G from INF to 0
+    start_node.F = 0;
+    
+    openset.push(std::make_pair(0, start_node));
+    smallest_value[start_node.index] = 0;
+    
+
+    while(!openset.empty()){
+
+        aNode curr = openset.top().second;
+//        cout<< "curr: " << curr.index << endl;
+        if(curr.index == end.index){ // end aNode is in openset, so path has been found
+//            return curr;
+            return reconstruct_path(came_from, curr.index);
+        }
+        
+//        if(curr.index == 97351){
+//                    std::cout << curr.index << std::endl;
+//                }
+        
+        openset.pop();
+
+        std::vector<unsigned> surround_segments = get_surround_segments(curr);
+
+        for(std::vector<unsigned>::iterator target = surround_segments.begin(); target != surround_segments.end(); ++target){
+
+            StreetSegmentInfo info = data_structure.streetsegmentinfo[*target];
+            aNode neighbor;
+
+            // get proper surrounding node
+            if(info.from == curr.index){
+                neighbor.index = info.to;
+            }
+            else{
+                neighbor.index = info.from;
+            }
+//            cout<< "neighbor: " << neighbor.index << endl;
+            // ****************************************************************
+
+	    aNode temp = aNode(neighbor.index);
+	    temp.parentSegment = *target;
+            
+            if((smallest_value[neighbor.index] == 0)&& neighbor.index != start.index){
+                smallest_value[neighbor.index] = neighbor.INF;
+            }
+
+	    double tentative_G = calcG(curr, temp, turn_penalty);
+            
+            
+            // how to get node in open set? and node already exist
+	    if(tentative_G < smallest_value[neighbor.index]){ // if temp is not in openset, then neighbor->G=INF
+                
+//                if(curr.index == 97351 && neighbor.index == 97352){
+//                    std::cout << "curr.index: "  << curr.index << ", *target: " << *target << std::endl;
+//                    std::cout << "came_from[curr.index]: " << came_from[curr.index].second << std::endl;
+//                    std::cout << "curr.parentSegment: " << curr.parentSegment << std::endl;
+//                    
+//                }
+                
+		// update
+//		neighbor.parentNode = curr;
+                came_from[neighbor.index] = std::make_pair(curr.index, *target); // parent segment
+		neighbor.parentSegment = *target;
+
+		neighbor.G = tentative_G;
+		neighbor.H = find_distance_between_two_points(data_structure.intersection[neighbor.index], data_structure.intersection[end.index])/27.7778;
+		neighbor.F = tentative_G + neighbor.H;
+		openset.push(std::make_pair(neighbor.F, neighbor));
+                
+                smallest_value[neighbor.index] = tentative_G;
+	    }      
+        }
+    }
+//    return NULL;
+    return std::vector<unsigned>();
+}
+
+
+std::vector<unsigned> astar::find_poi_path(aNode &start, const std::vector<unsigned> &end_poi_inter, double turn_penalty){
+
+    aNode start_node = aNode(start.index);
+    start_node.G = 0; // change start_node->G from INF to 0
+    start_node.F = 0;
+    
+    openset.push(std::make_pair(0, start_node));
+    smallest_value[start_node.index] = 0;
+
+    while(!openset.empty()){
+
+        aNode curr = openset.top().second;
+
+        for(std::vector<unsigned>::const_iterator it = end_poi_inter.begin(); it != end_poi_inter.end(); ++it){
+            if(curr.index == *it){
+                return reconstruct_path(came_from, curr.index);
+            }
+        }
+        
+        openset.pop();
+
+        std::vector<unsigned> surround_segments = get_surround_segments(curr);
+
+        for(std::vector<unsigned>::iterator target = surround_segments.begin(); target != surround_segments.end(); ++target){
+
+            StreetSegmentInfo info = data_structure.streetsegmentinfo[*target];
+            aNode neighbor;
+
+            // get proper surrounding node
+            if(info.from == curr.index){
+                neighbor.index = info.to;
+            }
+            else{
+                neighbor.index = info.from;
+            }
+
+            // ****************************************************************
+
+	    aNode temp = aNode(neighbor.index);
+	    temp.parentSegment = *target;
+            
+            if((smallest_value[neighbor.index] == 0)&& neighbor.index != start.index){
+                smallest_value[neighbor.index] = neighbor.INF;
+            }
+
+	    double tentative_G = calcG(curr, temp, turn_penalty);
+            
+            
+            // how to get node in open set? and node already exist
+	    if(tentative_G < smallest_value[neighbor.index]){ // if temp is not in openset, then neighbor->G=INF
+
+		// update
+//		neighbor.parentNode = curr;
+		neighbor.parentSegment = *target;
+                came_from[neighbor.index] = std::make_pair(curr.index, *target); // parent segment
+
+		neighbor.G = tentative_G;
+		openset.push(std::make_pair(neighbor.G, neighbor));
+                
+                smallest_value[neighbor.index] = tentative_G;
+	    }     
+        }
+    }
+//    return NULL;
+    return std::vector<unsigned>();
+}
+
+std::vector<unsigned> astar::reconstruct_path(std::unordered_map <unsigned, std::pair<unsigned, unsigned> > index_to_segment, unsigned curr_id){
+    std::vector<unsigned> total_path;
+    std::pair<unsigned, unsigned> pair;
+//    total_path.push_back(curr_id);
+
+    while(index_to_segment.find(curr_id) != index_to_segment.end() ){
+        pair = index_to_segment[curr_id]; // pair = (parent_node_index, parent_segment)
+        
+        total_path.push_back(pair.second); // parent_segment is push on to vector
+        
+        curr_id = pair.first; // go to parent node index
+        
+    }
+    std::reverse(total_path.begin(), total_path.end());
+    return total_path;
+    
+}
+
+
+//    total_path := [current]
+//    while current in cameFrom.Keys:
+//        current := cameFrom[current]
+//        total_path.append(current)
+//    return total_path
+
+
+//std::vector<unsigned> astar::get_path(aNode &start, aNode &end, double turn_penalty){
+//
+//    aNode* result = find_path(start, end, turn_penalty);
+//    std::vector<unsigned> path;
+//    while(result != NULL){
+//
+//        if(result->parentNode != NULL){
+//            path.push_back(result->parentSegment);
+//            result = result->parentNode;
+//        }
+//        else{
+//            break;
+//        }
+//    }
+//    std::reverse(path.begin(), path.end());
+//    return path;
+//}
+

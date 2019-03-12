@@ -1,0 +1,72 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+/* 
+ * File:   m2_header.h
+ * Author: liuyixu6
+ *
+ * Created on February 23, 2018, 4:41 PM
+ */
+
+#ifndef M2_HEADER_H
+#define M2_HEADER_H
+
+
+#include <iostream>
+#include <chrono>
+#include <thread>
+#include <cstdlib>
+<<<<<<< .mine
+=======
+
+>>>>>>> .r29
+#include <string>
+#include <math.h>
+
+#include <vector>
+#include <algorithm>
+#include <unordered_map>
+#include <set>
+#include <map>
+
+#include "m2.h"
+#include "m1.h"
+#include "graphics.h"
+#include "StreetsDatabaseAPI.h"
+
+#include "OSMDatabaseAPI.h"
+
+double avg_lat = 0;
+//FILE *temp = open("map-localization.png","r");
+
+// store osmid
+std::unordered_map <OSMID, const OSMNode*> nodes;
+std::unordered_map <OSMID, const OSMWay*> ways;
+
+void store_osm_data_structure();
+
+void drawscreen(void);
+void act_on_new_button_func(void (*drawscreen_ptr) (void));
+void act_on_button_press(float x, float y, t_event_buttonPressed event);
+void act_on_mouse_move(float x, float y);
+void act_on_key_press(char c, int keysym);
+void delay(long milliseconds);
+
+int street_seg_linewidth(float speedlimit);
+void draw_street_and_name();
+void draw_feature();
+
+<<<<<<< .mine
+void draw_POI (Surface icon);
+
+=======
+void draw_subway();
+void draw_osm_way_and_node(const OSMWay* w);
+void draw_line(LatLon point1, LatLon point2);
+void draw_point(LatLon point, Surface icon);
+>>>>>>> .r29
+#endif /* M2_HEADER_H */
+

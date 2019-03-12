@@ -1,0 +1,140 @@
+/* 
+ * Copyright 2018 University of Toronto
+ *
+ * Permission is hereby granted, to use this software and associated 
+ * documentation files (the "Software") in course work at the University 
+ * of Toronto, or for personal use. Other uses are prohibited, in 
+ * particular the distribution of the Software either publicly or to third 
+ * parties.
+ *
+ * The above copyright notice and this permission notice shall be included in 
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+#include <algorithm>
+#include <set>
+#include <random>
+#include <unittest++/UnitTest++.h>
+#include "unit_test_util.h"
+#include "m1.h"
+#include "StreetsDatabaseAPI.h"
+//#include <string>
+
+using ece297test::relative_error;
+
+//  std::vector<unsigned> find_street_ids_from_name(std::string street_name)
+SUITE(streetID_name_public_toronto_canada) {
+    struct MapFixture {
+        MapFixture() {
+            //Load the map
+            load_map("/cad2/ece297s/public/maps/toronto_canada.streets.bin");
+            
+            //Initialize random number generators
+            rng = std::minstd_rand(3);
+            rand_street = std::uniform_int_distribution<unsigned>(1, getNumberOfStreets()-1);
+        }
+
+        ~MapFixture() {
+            //Clean-up
+            close_map();
+        }
+        // define random function generators
+        std::minstd_rand rng;
+        std::uniform_int_distribution<unsigned> rand_street;
+    };
+    
+    // hand-generated corner cases
+    TEST_FIXTURE(MapFixture, find_street_ids_from_name_1) {
+        std::vector<unsigned> expected;
+        std::vector<unsigned> actual;
+        
+        // normal case
+        expected = {16154, 16160};
+        actual = find_street_ids_from_name("Birchwood Drive"); 
+        std::sort(actual.begin(), actual.end());
+        CHECK_EQUAL(expected, actual);
+        
+        // the first element
+        expected = {1};
+        actual = find_street_ids_from_name("Highway 401 Eastbound Collectors"); 
+        std::sort(actual.begin(), actual.end());
+        CHECK_EQUAL(expected, actual);
+        
+        // three same name
+        expected = {124,125,3052};
+        actual = find_street_ids_from_name("Queen's Park"); 
+        std::sort(actual.begin(), actual.end());
+        CHECK_EQUAL(expected, actual);
+        
+        // long element
+        expected = {20804, 20835, 20836, 20837, 20838, 20839, 20840, 20841, 20842, 20843, 20844, 20845};
+        actual = find_street_ids_from_name("Kiss & Ride"); 
+        std::sort(actual.begin(), actual.end());
+        CHECK_EQUAL(expected, actual);
+        
+        // the last element
+        expected = {21221};
+        actual = find_street_ids_from_name("Louvain Avenue"); 
+        std::sort(actual.begin(), actual.end());
+        CHECK_EQUAL(expected, actual);
+    }
+    
+    // automatically generated calls (1000)
+    TEST_FIXTURE(MapFixture, find_street_ids_from_name_2) {
+        std::vector<unsigned> expected;
+        std::vector<unsigned> actual;
+        std::string test_name;
+        
+        // generate 1000 street name inputs
+        std::vector<std::string> street_name;
+        for(size_t i = 0; i < 1000; i++) {
+            street_name.push_back(getStreetName(i));
+        }
+        
+        // check expected and actual
+        for(size_t i = 0; i < 1000; i++) {
+            // generate actual output using loop through all streets
+            for(unsigned j = 0 ; j < getNumberOfStreets() ; j++){
+                test_name = getStreetName(j);
+                if(test_name == street_name[i]){
+                    expected.push_back(j);
+                }
+            }
+            actual = find_street_ids_from_name(street_name[i]);
+            std::sort(actual.begin(), actual.end());
+            
+
+            
+            CHECK_EQUAL(expected, actual);
+            
+            expected.clear();
+            actual.clear();
+        }
+        
+    }
+    
+    TEST_FIXTURE(MapFixture, find_street_ids_from_name_3) {
+        //Generate random inputs
+        std::vector<std::string> street_name;
+        for(size_t i = 0; i < 1000000; i++) {
+            street_name.push_back(getStreetName(rand_street(rng)));
+        }
+        {
+            //Timed Test
+            ECE297_TIME_CONSTRAINT(250);
+            std::vector<unsigned> result;
+            for(size_t i = 0; i < 1000000; i++) {
+                result = find_street_ids_from_name(street_name[i]);
+            }
+        }
+    }
+    
+
+}

@@ -1,0 +1,145 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+#include "m3.h"
+#include "m1.h"
+#include "dataStructure.h"
+#include "astar.h"
+#include <iostream>
+#include <vector>
+#include <string>
+#include <limits>
+
+// global data structure
+extern dataStructure data_structure;
+extern double avg_lat; // average latitude
+
+// Returns the time required to travel along the path specified, in seconds. 
+// The path is given as a vector of street segment ids, and this function 
+// can assume the vector either forms a legal path or has size == 0.
+// The travel time is the sum of the length/speed-limit of each street 
+// segment, plus the given turn_penalty (in seconds) per turn implied by the path. 
+// A turn occurs when two consecutive street segments have different street IDs.
+double compute_path_travel_time(const std::vector<unsigned>& path, 
+                                const double turn_penalty){
+    
+    if(path.size() == 0){
+        return 0;
+    }
+    double sum_time = 0;
+    for (std::vector<unsigned>::const_iterator it = path.begin() ; it != path.end(); ++it){
+
+        sum_time += data_structure.segments_time[*it];
+        if((it+1) != path.end()){
+            if(data_structure.streetsegmentinfo[*it].streetID != data_structure.streetsegmentinfo[*(it+1)].streetID){
+                sum_time += turn_penalty;
+            }
+        }
+    }
+    //std::cout << sum_time << std::endl;
+    return sum_time;
+    
+}
+
+// Returns a path (route) between the start intersection and the end 
+// intersection, if one exists. This routine should return the shortest path
+// between the given intersections when the time penalty to turn (change
+// street IDs) is given by turn_penalty (in seconds).
+// If no path exists, this routine returns an empty (size == 0) vector. 
+// If more than one path exists, the path with the shortest travel time is 
+// returned. The path is returned as a vector of street segment ids; traversing 
+// these street segments, in the returned order, would take one from the start 
+// to the end intersection.
+std::vector<unsigned> find_path_between_intersections(const unsigned intersect_id_start, 
+                                                      const unsigned intersect_id_end,
+                                                      const double turn_penalty){
+    astar find_intersection;
+
+    aNode start = aNode(intersect_id_start);
+    aNode end = aNode(intersect_id_end);
+
+    std::vector<unsigned> path = find_intersection.get_path(start, end, turn_penalty);
+    
+//    std::cout << std::endl << "path segment is ";
+//    for (std::vector<unsigned>::const_iterator i = path.begin(); i != path.end(); ++i){
+//        
+//        std::cout << *i << ' ';
+//    }
+//    std::cout << std::endl;
+    
+    return path;
+    
+}
+
+
+// Returns the shortest travel time path (vector of street segments) from 
+// the start intersection to a point of interest with the specified name.
+// The path will begin at the specified intersection, and end on the 
+// intersection that is closest (in Euclidean distance) to the point of 
+// interest.
+// If no such path exists, returns an empty (size == 0) vector.
+std::vector<unsigned> find_path_to_point_of_interest(const unsigned intersect_id_start, 
+                                               const std::string point_of_interest_name,
+                                               const double turn_penalty){
+    
+//  nameToPOI is an unordered-map stores poi name and corresponding poi ids
+    
+    std::vector<unsigned> POI_id_with_same_name = data_structure.nameToPOI[point_of_interest_name];
+    std::vector<unsigned> POI_near_intersection;
+    unsigned temp_intersection_id;
+    LatLon poi_position;
+    for (std::vector<unsigned>::const_iterator it = POI_id_with_same_name.begin(); it != POI_id_with_same_name.end(); ++it){
+//        std::cout <<  "poi intersection id: " << *it;
+        
+        poi_position = getPointOfInterestPosition(*it);
+        temp_intersection_id = find_closest_intersection(poi_position);
+        POI_near_intersection.push_back(temp_intersection_id);
+
+    }
+    
+    astar find_poi;
+
+    aNode start = aNode(intersect_id_start);
+
+    std::vector<unsigned> path = find_poi.get_poi_path(start, POI_near_intersection, turn_penalty);
+    
+    return path;
+    
+    //Returns the the nearest intersection to the given position //  unsigned find_closest_intersection(LatLon my_position);
+//    unsigned POI_nearest_intersection;
+//    std::vector<unsigned> path, min_time_path;
+//    LatLon poi_position;
+//    double time = 0;
+//    double min_time = std::numeric_limits<double>::infinity();
+//    
+//    for (std::vector<unsigned>::const_iterator it = POI_with_same_name.begin(); it != POI_with_same_name.end(); ++it){
+//        poi_position = getPointOfInterestPosition(*it);
+//        POI_nearest_intersection = find_closest_intersection(poi_position);
+//        path = find_path_between_intersections(intersect_id_start, POI_nearest_intersection, turn_penalty);
+//        
+//        
+//        time = compute_path_travel_time(path, turn_penalty);
+//        
+//        std::cout <<  "current end intersection id: " << POI_nearest_intersection;
+//        std::cout <<  ", current time: " << time << std::endl;
+//        
+//        if(time < min_time){
+//            min_time_path = path;
+//            min_time = time;
+//        }
+//    }
+//
+//    
+//    std::cout << std::endl << "final path segment is ";
+//    for (std::vector<unsigned>::const_iterator i = min_time_path.begin(); i != min_time_path.end(); ++i){
+//        
+//        std::cout << *i << ' ';
+//    }
+//    std::cout << std::endl;
+//    
+//    return min_time_path;
+    
+}

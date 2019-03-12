@@ -1,0 +1,75 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+/* 
+ * File:   astar.h
+ * Author: liuyixu6
+ *
+ * Created on March 17, 2018, 3:50 PM
+ */
+
+#ifndef ASTAR_H
+#define ASTAR_H
+
+#include <vector>
+#include <queue>
+#include <unordered_map>
+#include "StreetsDatabaseAPI.h"
+#include "m1.h"
+//#include "min_heap.h"
+#include "aNode.h"
+#include <utility> // define std::pair
+
+typedef std::pair<double, aNode*> aPair; // the first vertex stores F value, second is aNode* itself	
+
+class astar{
+public:
+    void init_astar(std::vector<aNode*> &_map);
+    std::vector<unsigned> get_path(aNode &start, aNode &end, double turn_penalty);
+    
+    ~astar(){
+//        for (std::vector<aNode*>::iterator it=openset.begin(); it != openset.end(); ++it){
+//            delete *it;
+//        }
+//        
+//        for (std::vector<aNode*>::iterator it=closeset.begin(); it != closeset.end(); ++it){
+//            delete *it;
+//        }
+        
+        while(!openset.empty()){
+            aNode* temp=openset.top().second;
+            delete temp;
+            openset.pop();
+        }
+        
+    }
+
+private:
+    
+    aNode* find_path(aNode &start, aNode &end, double turn_penalty);
+    std::vector<unsigned> get_surround_segments(const aNode* curr) const;
+
+//    aNode* is_in_list(const std::priority_queue<aNode*, std::vector<aNode*>, aNodeGreater> &list, const aNode& temp); // whether aNode is in closed/open set
+//    aNode* get_smallest_F_value_node_from_openset();
+    
+    double calcG(aNode* curr, aNode* temp, double turn_penalty);
+//    double calcH(aNode* temp, aNode* end);
+//    double calcF(aNode* temp);
+    
+    
+
+private:
+    std::vector<aNode*> map;
+//    std::vector<aNode*> openset; // change to binary heap
+//    std::vector<aNode*> closeset;
+    
+    std::priority_queue<aPair, std::vector<aPair>, std::greater<aPair> > openset;
+	// min heap
+    std::unordered_map <unsigned, double> smallest_value;
+};
+
+#endif /* ASTAR_H */
+

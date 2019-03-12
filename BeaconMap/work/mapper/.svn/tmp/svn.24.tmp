@@ -1,0 +1,300 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+#include "m2_header.h"
+#include "m2.h"
+
+void draw_map(){
+    
+    double lat_max = getIntersectionPosition(0).lat();
+    double lat_min = lat_max;
+    double lon_max = getIntersectionPosition(0).lon();
+    double lon_min = lon_max;
+  
+    for(unsigned a = 0; a < getNumberOfIntersections(); a ++){
+        double temp_lat = getIntersectionPosition(a).lat();
+        double temp_lon = getIntersectionPosition(a).lon();
+         if(a==0){
+             lat_max = temp_lat;
+             lat_min = temp_lat;
+             lon_max = temp_lon;
+             lon_min = temp_lon;
+         }
+         if(lat_max < temp_lat) lat_max = temp_lat;
+         if(lon_max < temp_lon) lon_max = temp_lon;
+         if(lat_min > temp_lat) lat_min = temp_lat;
+         if(lon_min > temp_lon) lon_min = temp_lon; 
+    }
+    avg_lat = 0.5*(lat_max + lat_min);
+    
+    
+    init_graphics("Some Example Graphics", t_color(240,240,240,255));
+    
+    set_visible_world (lon_min * cos(avg_lat) * DEG_TO_RAD, lat_min * DEG_TO_RAD,
+                       lon_max * cos(avg_lat) * DEG_TO_RAD, lat_max * DEG_TO_RAD);
+    
+    update_message("Toronto Map");
+    set_drawing_buffer(OFF_SCREEN);
+    clearscreen();
+    event_loop(NULL,NULL,NULL, drawscreen);
+    
+    close_graphics();
+}
+
+/*void act_on_mousebutton(float x, float y, t_event_buttonPressed button_info){
+    unsigned numofIntersections= getNumberOfPointsOfInterest();
+    double close_inter_x, close_inter_y; 
+    LatLon temp;
+    for(unsigned i = 0; i<numofIntersections;i++){
+        if (i = 0) {
+             close_inter_x =  getIntersectionPosition(i).lon() * cos(avg_lat) * DEG_TO_RAD;
+             close_inter_y =  getIntersectionPosition(i).lat() * DEG_TO_RAD;
+        }
+        else {
+            if (abs(temp.lat()* DEG_TO_RAD-x))
+        }
+    }
+}*/
+void draw_POI (Surface icon){
+    float x, y;
+    for (unsigned i = 0; i< getNumberOfPointsOfInterest(); i ++){
+        x =  getPointOfInterestPosition(i).lon()*cos(avg_lat) * DEG_TO_RAD; 
+        y =  getPointOfInterestPosition(i).lat()* DEG_TO_RAD;
+        setcolor( 50,  250,  250, 255); 
+       draw_surface(icon, x, y);
+        
+    }
+}
+
+
+void drawscreen(void) {
+
+    /* The redrawing routine for still pictures.  The graphics package calls  
+     * this routine to do redrawing after the user changes the window 
+     * in any way.                                                    
+     */
+
+    set_draw_mode(DRAW_NORMAL); // Should set this if your program does any XOR drawing in callbacks.
+    clearscreen(); /* Should precede drawing for all drawscreens */
+    
+    //std::cout<< get_visible_world().area()<<"\n";
+ 
+    draw_street_and_name();
+    
+    draw_feature();
+    
+       //float area = get_visible_world().area();
+
+    copy_off_screen_buffer_to_screen();
+  
+}
+
+
+int street_seg_linewidth(float speedlimit){
+    if(speedlimit >= 100){
+        return 8;
+    }
+    else if(speedlimit >= 80){
+        return 7;
+    }
+    else if(speedlimit >= 50){
+        return 6;
+    }
+    else if(speedlimit >= 30){
+        return 5;
+    }
+    else{
+        return 4;
+    }
+}
+
+void draw_street_and_name(){
+    
+    setlinestyle(SOLID);
+    setlinewidth(1);
+    setcolor(WHITE);
+    
+    unsigned numofStreetSeg = getNumberOfStreetSegments();
+
+    for(unsigned i=0; i<numofStreetSeg; i++){
+        LatLon point1 = getIntersectionPosition(getStreetSegmentInfo(i).from);
+        LatLon point2 = getIntersectionPosition(getStreetSegmentInfo(i).to);
+        float speed = getStreetSegmentInfo(i).speedLimit;
+        setlinewidth(street_seg_linewidth(speed));
+        
+        // x = lon * cos(lat_avg)
+        double x1 = point1.lon() * cos(avg_lat) * DEG_TO_RAD;
+        double x2 = point2.lon() * cos(avg_lat) * DEG_TO_RAD;
+        // y = lat
+        double y1 = point1.lat() * DEG_TO_RAD;
+        double y2 = point2.lat() * DEG_TO_RAD;
+        
+        if(getStreetSegmentInfo(i).curvePointCount == 0){
+            drawline(x1, y1, x2, y2);
+        }
+        else{
+            LatLon temp_point1 = getStreetSegmentCurvePoint(i, 0); // first curve point
+            LatLon temp_point2 = getStreetSegmentCurvePoint(i, getStreetSegmentInfo(i).curvePointCount-1); // last curve point
+            // first draw first and last curve 
+            double temp_x1 = temp_point1.lon() * cos(avg_lat) * DEG_TO_RAD;
+            double temp_x2 = temp_point2.lon() * cos(avg_lat) * DEG_TO_RAD;
+            
+            double temp_y1 = temp_point1.lat() * DEG_TO_RAD;
+            double temp_y2 = temp_point2.lat() * DEG_TO_RAD;
+            
+            drawline(x1, y1, temp_x1, temp_y1);
+            drawline(temp_x2, temp_y2, x2, y2);
+            
+            // then loop street segment, find curve length between two curve points
+            for(unsigned a=0; a<getStreetSegmentInfo(i).curvePointCount-1; a++){
+                temp_point1 = getStreetSegmentCurvePoint(i, a); // first curve point
+                temp_point2 = getStreetSegmentCurvePoint(i, a+1); // second curve point
+                
+                temp_x1 = temp_point1.lon() * cos(avg_lat) * DEG_TO_RAD;
+                temp_x2 = temp_point2.lon() * cos(avg_lat) * DEG_TO_RAD;
+
+                temp_y1 = temp_point1.lat() * DEG_TO_RAD;
+                temp_y2 = temp_point2.lat() * DEG_TO_RAD;
+                
+                drawline(temp_x1, temp_y1, temp_x2, temp_y2);
+            }
+            
+        }
+        
+    }
+    
+    if (LOD_area_test(4.0e-08)){
+        std::vector<unsigned> streetid_test; 
+         
+         for (int k =0; k< numofStreetSeg; k++){
+              LatLon point1 = getIntersectionPosition(getStreetSegmentInfo(k).from);
+              LatLon point2 = getIntersectionPosition(getStreetSegmentInfo(k).to);
+            // x = lon * cos(lat_avg)
+            double x1 = point1.lon() * cos(avg_lat) * DEG_TO_RAD;
+            double x2 = point2.lon() * cos(avg_lat) * DEG_TO_RAD;
+            // y = lat
+            double y1 = point1.lat() * DEG_TO_RAD;
+            double y2 = point2.lat() * DEG_TO_RAD;
+            double xc = 0.5*(x2+x1);
+            double yc = 0.5*(y2+y1);
+            unsigned streetID =getStreetSegmentInfo(k).streetID;
+            
+            
+            if (std::find(streetid_test.begin(), streetid_test.end(), streetID) == streetid_test.end()){
+               setcolor(BLACK); 
+                settextrotation(atan((y2-y1)/(x2-x1))*180/PI);
+                drawtext(xc, yc, getStreetName(getStreetSegmentInfo(k).streetID), abs(x1-x2), abs(y1-y2)); 
+            }
+            if (getStreetSegmentInfo(k).oneWay){
+                 setcolor(BLACK);
+                settextrotation(atan((y2-y1)/(x2-x1))*180/PI);
+                 drawtext(xc, yc, ">>", abs(x1-x2), abs(y1-y2)); 
+            }
+         }
+         
+     }
+}
+
+void draw_feature(){
+    unsigned num_of_features = getNumberOfFeatures();
+    Surface icon = load_png_from_file("libstreetmap/resources/small_image.png");
+
+    for(unsigned i = 0; i < num_of_features; i++){
+
+        FeatureType temp_feature = getFeatureType(i);
+        unsigned num_of_points = getFeaturePointCount(i);
+        t_point list_of_points[num_of_points];
+
+        for(unsigned a = 0; a < num_of_points; a++){
+
+            list_of_points[a].x = getFeaturePoint(i, a).lon() * cos(avg_lat) * DEG_TO_RAD;
+            list_of_points[a].y = getFeaturePoint(i, a).lat() * DEG_TO_RAD;
+        }
+
+        if(temp_feature == 1){//Park
+
+            setcolor( 175,  255,  130, 255);
+            fillpoly(list_of_points, num_of_points);
+        }
+        else if(temp_feature == 2){//Beach
+            setcolor( 240,  240,  150, 255);
+            fillpoly(list_of_points, num_of_points);
+        }
+        else if(temp_feature == 3){//Lake
+            setcolor( 50,  250,  250, 255);
+            fillpoly(list_of_points, num_of_points);
+        }
+        else if(temp_feature == 4){//River
+
+            setcolor( 50,  250,  250, 255);
+            fillpoly(list_of_points, num_of_points);
+        }
+        else if(temp_feature == 5){//Island
+            setcolor(250,250,245,255);
+            fillpoly(list_of_points, num_of_points);
+        }
+        else if(temp_feature == 6){//Shoreline, deprecated, no longer used & should be removed
+
+        }
+//        
+        else if(temp_feature == 0){//Unknown
+            setcolor(LIGHTGREY);
+            fillpoly(list_of_points, num_of_points);
+        }
+
+    
+    if (LOD_area_test(7.0e-07)){ // if the level of detail accurate to 7th zoom in 
+       if(temp_feature == 7){//Building
+                setcolor(255,  237,  188, 255);
+                fillpoly(list_of_points, num_of_points);
+            }
+
+    }
+    
+    if (LOD_area_test(6.0e-06)){
+         if(temp_feature == 10){//Stream
+                setlinewidth(0.3);
+                setcolor( 170,  218,  255, 255);
+                for(unsigned ref = 0; ref < num_of_points - 1; ref++){
+                    drawline(list_of_points[ref], list_of_points[ref+1]);
+                }           
+            }
+         if(temp_feature == 9){//Golfcourse
+                setcolor( 127,  223,  30, 255);
+                fillpoly(list_of_points, num_of_points);
+                
+            }
+         if(temp_feature == 8){//Greenspace
+                setcolor( 191,  255,  170, 255);
+                fillpoly(list_of_points, num_of_points);
+            }
+         
+    
+  
+    }
+
+        }
+        if (LOD_area_test(4.0e-08)){
+        float x, y;
+        for (unsigned i = 0; i< getNumberOfPointsOfInterest(); i ++){
+           x =  getPointOfInterestPosition(i).lon()*cos(avg_lat) * DEG_TO_RAD; 
+           y =  getPointOfInterestPosition(i).lat()* DEG_TO_RAD;
+           setcolor( 50,  250,  250, 255); 
+           draw_surface(icon, x, y);
+
+       }
+     }
+     if (LOD_area_test(1.6e-09)){
+        float x, y;
+        for (unsigned i = 0; i< getNumberOfPointsOfInterest(); i ++){
+           x =  getPointOfInterestPosition(i).lon()*cos(avg_lat) * DEG_TO_RAD; 
+           y =  getPointOfInterestPosition(i).lat()* DEG_TO_RAD;
+           setcolor( 50,  250,  250, 255); 
+           drawtext(x, y+2.0e-11, getPointOfInterestName(i), 2.0e-11, 2.0e-12); 
+
+       }
+     }   
+}

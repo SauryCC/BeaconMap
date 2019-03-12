@@ -1,0 +1,111 @@
+/* 
+ * Copyright 2018 University of Toronto
+ *
+ * Permission is hereby granted, to use this software and associated 
+ * documentation files (the "Software") in course work at the University 
+ * of Toronto, or for personal use. Other uses are prohibited, in 
+ * particular the distribution of the Software either publicly or to third 
+ * parties.
+ *
+ * The above copyright notice and this permission notice shall be included in 
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+#include "m1.h"
+#include "StreetsDatabaseAPI.h"
+#include <math.h>
+
+bool load_map(std::string map_path) {
+    bool load_successful = false; //Indicates whether the map has loaded 
+                                  //successfully
+
+    //
+    //Load your map related data structures here
+    //
+
+    load_successful = loadStreetsDatabaseBIN(map_path);
+
+    //load_successful = true; //Make sure this is updated to reflect whether
+                            //loading the map succeeded or failed
+
+    return load_successful;
+}
+
+void close_map() {
+    //Clean-up your map related data structures here
+    
+}
+
+//Returns the distance between two coordinates in meters
+double find_distance_between_two_points(LatLon point1, LatLon point2){
+    // change degree to radian
+    double lat_avg = DEG_TO_RAD * (point1.lat() + point2.lat())/2;
+    // x = lon * cos(lat_avg)
+    double x1 = DEG_TO_RAD * point1.lon() * cos(lat_avg);
+    double x2 = DEG_TO_RAD * point2.lon() * cos(lat_avg);
+    // y = lat
+    double y1 = DEG_TO_RAD * point1.lat();
+    double y2 = DEG_TO_RAD * point2.lat();
+    // d = R * sqrt((y1-y2)^2 + (x1-x2)^2)
+    return EARTH_RADIUS_IN_METERS * sqrt((y2-y1)*(y2-y1) + (x2-x1)*(x2-x1));
+}
+
+//Returns the length of the given street segment in meters
+double find_street_segment_length(unsigned street_segment_id){
+    StreetSegmentInfo st = getStreetSegmentInfo(street_segment_id);
+    unsigned count = st.curvePointCount;
+    double length = 0.0;
+    LatLon point_from = getIntersectionPosition(st.from);
+    LatLon point_to = getIntersectionPosition(st.to);
+    
+    // if there is no curve point, calculate straight street segment
+    if(count == 0){
+        return find_distance_between_two_points(point_from, point_to);
+    }
+    else{
+        LatLon temp_point1 = getStreetSegmentCurvePoint(street_segment_id, 0); // first curve point
+        LatLon temp_point2 = getStreetSegmentCurvePoint(street_segment_id, count-1); // last curve point
+        unsigned i;
+        // first calculate the sum of first and last curve 
+        length += find_distance_between_two_points(temp_point1, point_from) // first curve segment length
+                + find_distance_between_two_points(point_to, temp_point2); // last curve segment length
+        // then loop street segment, find curve length between two curve points
+        for(i=0; i<count-1; i++){
+            temp_point1 = getStreetSegmentCurvePoint(street_segment_id, i); // first curve point
+            temp_point2 = getStreetSegmentCurvePoint(street_segment_id, i+1); // second curve point
+            length += find_distance_between_two_points(temp_point1, temp_point2);
+        }
+        return length;
+    }
+}
+
+//Returns the length of the specified street in meters
+double find_street_length(unsigned street_id){
+    unsigned i;
+    unsigned temp_id;
+    double street_length = 0.0;
+    
+    // iterate all street segments, and if the segment belongs to this street, add it to the length of street
+    for(i=0; i < getNumberOfStreetSegments(); i++){
+        temp_id = getStreetSegmentInfo(i).streetID;
+        if(temp_id == street_id){
+            street_length += find_street_segment_length(i);
+        }
+    }
+    return street_length;
+}
+
+//Returns the travel time to drive a street segment in seconds 
+//(time = distance/speed_limit)
+double find_street_segment_travel_time(unsigned street_segment_id){
+    float speed_limit = 0.277778 * getStreetSegmentInfo(street_segment_id).speedLimit; // change unit from km/h to m/s
+    double segment_length = find_street_segment_length(street_segment_id);
+    return segment_length/speed_limit;
+}
